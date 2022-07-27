@@ -1297,9 +1297,9 @@ public abstract class BaseDeltaLakeConnectorSmokeTest
         // split pruning should still be working
         testCountQuery(format("SELECT count(*) FROM %s WHERE l = 0", tableName), 3, 3);
 
-        // split pruning should still be working when table metadata (snapshot, active files) is read anew
+        // split pruning should not be working when table metadata (snapshot, active files) is read anew
         invalidateMetadataCache(tableName);
-        testCountQuery(format("SELECT count(*) FROM %s WHERE l = 0", tableName), 3, 3);
+        testCountQuery(format("SELECT count(*) FROM %s WHERE l = 0", tableName), 3, 13);
 
         assertUpdate("DROP TABLE " + tableName);
     }
