@@ -19,8 +19,8 @@ import io.trino.plugin.deltalake.transactionlog.MetadataEntry;
 import io.trino.plugin.deltalake.transactionlog.ProtocolEntry;
 import io.trino.plugin.deltalake.transactionlog.RemoveFileEntry;
 import io.trino.plugin.deltalake.transactionlog.TransactionEntry;
+import io.trino.plugin.deltalake.transactionlog.statistics.DeltaLakeFileStatistics;
 import io.trino.plugin.deltalake.transactionlog.statistics.DeltaLakeJsonFileStatistics;
-import io.trino.plugin.deltalake.transactionlog.statistics.DeltaLakeParquetFileStatistics;
 import io.trino.plugin.hive.HdfsEnvironment;
 import io.trino.plugin.hive.RecordFileWriter;
 import io.trino.spi.PageBuilder;
@@ -235,11 +235,11 @@ public class CheckpointWriter
     private void writeParsedStats(BlockBuilder entryBlockBuilder, RowType entryType, AddFileEntry addFileEntry, int fieldId)
     {
         RowType statsType = getInternalRowType(entryType, fieldId, "stats_parsed");
-        if (addFileEntry.getStats().isEmpty() || !(addFileEntry.getStats().get() instanceof DeltaLakeParquetFileStatistics)) {
+        if (addFileEntry.getStats().isEmpty()) {
             entryBlockBuilder.appendNull();
             return;
         }
-        DeltaLakeParquetFileStatistics stats = (DeltaLakeParquetFileStatistics) addFileEntry.getStats().get();
+        DeltaLakeFileStatistics stats = addFileEntry.getStats().get();
         BlockBuilder statsBlockBuilder = entryBlockBuilder.beginBlockEntry();
 
         writeLong(statsBlockBuilder, statsType, 0, "numRecords", stats.getNumRecords().orElse(null));
@@ -279,6 +279,10 @@ public class CheckpointWriter
                     }
                 }
                 else {
+                    if (value instanceof Integer) {
+                        // To avoid java.lang.Integer cannot be cast to java.lang.Long in TypeUtils.writeNativeValue method
+                        value = ((Integer) value).longValue();
+                    }
                     writeNativeValue(valueField.getType(), fieldBlockBuilder, value);
                 }
             }

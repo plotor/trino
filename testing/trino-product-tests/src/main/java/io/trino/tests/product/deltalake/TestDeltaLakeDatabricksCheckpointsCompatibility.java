@@ -462,6 +462,48 @@ public class TestDeltaLakeDatabricksCheckpointsCompatibility
         }
     }
 
+    @Test(groups = {DELTA_LAKE_DATABRICKS, DELTA_LAKE_EXCLUDE_73, PROFILE_SPECIFIC_TESTS})
+    public void testTrinoWriteStatsAsStructEnabled()
+    {
+        String tableName = "test_dl_checkpoints_write_stats_as_struct_enabled_trino_" + randomTableSuffix();
+        testWriteStatsAsStructEnabled(sql -> onTrino().executeQuery(sql), tableName, "delta.default." + tableName);
+    }
+
+    @Test(groups = {DELTA_LAKE_DATABRICKS, DELTA_LAKE_EXCLUDE_73, PROFILE_SPECIFIC_TESTS})
+    public void testDatabricksWriteStatsAsStructEnabled()
+    {
+        String tableName = "test_dl_checkpoints_write_stats_as_struct_enabled_databricks_" + randomTableSuffix();
+        testWriteStatsAsStructEnabled(sql -> onDelta().executeQuery(sql), tableName, "default." + tableName);
+    }
+
+    private void testWriteStatsAsStructEnabled(Consumer<String> sqlExecutor, String tableName, String qualifiedTableName)
+    {
+        onDelta().executeQuery(format(
+                "CREATE TABLE default.%s" +
+                        "(a_number INT, a_string STRING) " +
+                        "USING DELTA " +
+                        "PARTITIONED BY (a_number) " +
+                        "LOCATION 's3://%s/databricks-compatibility-test-%1$s' " +
+                        "TBLPROPERTIES (" +
+                        " delta.checkpointInterval = 1, " +
+                        " delta.checkpoint.writeStatsAsJson = false, " +
+                        " delta.checkpoint.writeStatsAsStruct = true)",
+                tableName, bucketName));
+
+        try {
+            sqlExecutor.accept("INSERT INTO " + qualifiedTableName + " VALUES (1,'ala')");
+
+            assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
+                    .containsOnly(ImmutableList.of(
+                            row("a_number", null, 1.0, 0.0, null, null, null),
+                            row("a_string", null, null, 0.0, null, null, null),
+                            row(null, null, null, null, 1.0, null, null)));
+        }
+        finally {
+            onDelta().executeQuery("DROP TABLE default." + tableName);
+        }
+    }
+
     private void fillWithInserts(String tableName, String values, int toCreate)
     {
         for (int i = 0; i < toCreate; i++) {
