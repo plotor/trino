@@ -15,8 +15,13 @@ package io.trino.plugin.deltalake.transactionlog;
 
 import io.airlift.log.Logger;
 import io.trino.plugin.base.type.DecodedTimestamp;
+import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.block.RowBlockBuilder;
 import io.trino.spi.type.DateType;
 import io.trino.spi.type.DecimalType;
+import io.trino.spi.type.Decimals;
+import io.trino.spi.type.RowType;
+import io.trino.spi.type.TimestampType;
 import io.trino.spi.type.TimestampWithTimeZoneType;
 import io.trino.spi.type.Type;
 import io.trino.spi.type.VarcharType;
@@ -29,12 +34,15 @@ import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 
+import javax.annotation.Nullable;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiFunction;
@@ -44,11 +52,15 @@ import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static io.trino.parquet.ParquetTimestampUtils.decodeInt96Timestamp;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
+import static io.trino.spi.type.Decimals.isShortDecimal;
 import static io.trino.spi.type.DoubleType.DOUBLE;
 import static io.trino.spi.type.IntegerType.INTEGER;
 import static io.trino.spi.type.RealType.REAL;
 import static io.trino.spi.type.SmallintType.SMALLINT;
+import static io.trino.spi.type.Timestamps.MICROSECONDS_PER_MILLISECOND;
 import static io.trino.spi.type.TinyintType.TINYINT;
+import static io.trino.spi.type.TypeUtils.writeNativeValue;
+import static java.lang.Float.floatToRawIntBits;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.ZoneOffset.UTC;
 import static java.time.format.DateTimeFormatter.ISO_INSTANT;
@@ -69,6 +81,67 @@ public class DeltaLakeParquetStatisticsUtils
                         !metadata.getStatistics().isNumNullsSet() || metadata.getStatistics().isEmpty() ||
                         // Columns with NaN values are marked by `hasNonNullValue` = false by the Parquet reader. See issue: https://issues.apache.org/jira/browse/PARQUET-1246
                         (!metadata.getStatistics().hasNonNullValue() && metadata.getStatistics().getNumNulls() != metadata.getValueCount()));
+    }
+
+    public static Object toTrinoValue(Type type, @Nullable Object value)
+    {
+        if (value == null) {
+            return null;
+        }
+
+        if (type == SMALLINT || type == TINYINT || type == INTEGER) {
+            return (long) (int) value;
+        }
+        if (type == BIGINT) {
+            return (long) (int) value;
+        }
+        if (type == REAL) {
+            return (long) floatToRawIntBits((float) (double) value);
+        }
+        if (type == DOUBLE) {
+            return (double) value;
+        }
+        if (type instanceof DecimalType) {
+            BigDecimal decimal;
+            checkArgument(value instanceof String || value instanceof Double, "Value must be instance of String or Double");
+            if (value instanceof String) {
+                decimal = new BigDecimal((String) value);
+            }
+            else {
+                decimal = BigDecimal.valueOf((double) value);
+            }
+
+            if (isShortDecimal(type)) {
+                return Decimals.encodeShortScaledValue(decimal, ((DecimalType) type).getScale());
+            }
+            return Decimals.encodeScaledValue(decimal, ((DecimalType) type).getScale());
+        }
+        if (type instanceof VarcharType) {
+            return (String) value;
+        }
+        if (type.equals(DateType.DATE)) {
+            return LocalDate.parse((String) value).toEpochDay();
+        }
+        if (type instanceof TimestampType) {
+            return Instant.parse((String) value).toEpochMilli() * MICROSECONDS_PER_MILLISECOND;
+        }
+        if (type instanceof RowType) {
+            RowType rowType = (RowType) type;
+            Map<?, ?> values = (Map<?, ?>) value;
+            List<Type> fieldTypes = rowType.getTypeParameters();
+            BlockBuilder blockBuilder = new RowBlockBuilder(fieldTypes, null, 1);
+            BlockBuilder singleRowBlockWriter = blockBuilder.beginBlockEntry();
+            for (int i = 0; i < values.size(); ++i) {
+                Type fieldType = fieldTypes.get(i);
+                Object fieldValue = toTrinoValue(fieldType, values.get(rowType.getFields().get(i).getName().orElseThrow()));
+                writeNativeValue(fieldType, singleRowBlockWriter, fieldValue);
+            }
+
+            blockBuilder.closeEntry();
+            return blockBuilder.build();
+        }
+
+        throw new UnsupportedOperationException("Unsupported type: " + type);
     }
 
     public static Map<String, Object> jsonEncodeMin(Map<String, Optional<Statistics<?>>> stats, Map<String, Type> typeForColumn)

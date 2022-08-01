@@ -463,6 +463,58 @@ public class TestDeltaLakeDatabricksCheckpointsCompatibility
     }
 
     @Test(groups = {DELTA_LAKE_DATABRICKS, DELTA_LAKE_EXCLUDE_73, PROFILE_SPECIFIC_TESTS})
+    public void testTrinoWriteStatsAsJsonEnabled()
+    {
+        String tableName = "test_dl_checkpoints_write_stats_as_json_enabled_trino_" + randomTableSuffix();
+        testWriteStatsAsJsonEnabled(sql -> onTrino().executeQuery(sql), tableName, "delta.default." + tableName);
+    }
+
+    @Test(groups = {DELTA_LAKE_DATABRICKS, DELTA_LAKE_EXCLUDE_73, PROFILE_SPECIFIC_TESTS})
+    public void testDatabricksWriteStatsAsJsonEnabled()
+    {
+        String tableName = "test_dl_checkpoints_write_stats_as_json_enabled_databricks_" + randomTableSuffix();
+        testWriteStatsAsJsonEnabled(sql -> onDelta().executeQuery(sql), tableName, "default." + tableName);
+    }
+
+    private void testWriteStatsAsJsonEnabled(Consumer<String> sqlExecutor, String tableName, String qualifiedTableName)
+    {
+        onDelta().executeQuery(format(
+                "CREATE TABLE default.%s" +
+                        "(a_number INT, a_string STRING) " +
+                        "USING DELTA " +
+                        "LOCATION 's3://%s/databricks-compatibility-test-%1$s' " +
+                        "TBLPROPERTIES (" +
+                        " delta.checkpointInterval = 2, " +
+                        " delta.checkpoint.writeStatsAsJson = false, " +
+                        " delta.checkpoint.writeStatsAsStruct = true)",
+                tableName, bucketName));
+
+        try {
+            sqlExecutor.accept("INSERT INTO " + qualifiedTableName + " VALUES (1,'one')");
+            sqlExecutor.accept("INSERT INTO " + qualifiedTableName + " VALUES (2,'two')");
+            assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
+                    .containsOnly(ImmutableList.of(
+                            row("a_number", null, null, 0.0, null, "1", "2"),
+                            row("a_string", null, null, 0.0, null, null, null),
+                            row(null, null, null, null, 2.0, null, null)));
+
+            onDelta().executeQuery("ALTER TABLE default." + tableName + " SET TBLPROPERTIES ('delta.checkpoint.writeStatsAsJson' = true, 'delta.checkpoint.writeStatsAsStruct' = false)");
+
+            sqlExecutor.accept("INSERT INTO " + qualifiedTableName + " VALUES (3,'three')");
+            sqlExecutor.accept("INSERT INTO " + qualifiedTableName + " VALUES (4,'four')");
+
+            assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
+                    .containsOnly(ImmutableList.of(
+                            row("a_number", null, null, 0.0, null, "1", "4"),
+                            row("a_string", null, null, 0.0, null, null, null),
+                            row(null, null, null, null, 4.0, null, null)));
+        }
+        finally {
+            onDelta().executeQuery("DROP TABLE default." + tableName);
+        }
+    }
+
+    @Test(groups = {DELTA_LAKE_DATABRICKS, DELTA_LAKE_EXCLUDE_73, PROFILE_SPECIFIC_TESTS})
     public void testTrinoWriteStatsAsStructEnabled()
     {
         String tableName = "test_dl_checkpoints_write_stats_as_struct_enabled_trino_" + randomTableSuffix();
