@@ -20,7 +20,6 @@ import io.trino.plugin.deltalake.transactionlog.ProtocolEntry;
 import io.trino.plugin.deltalake.transactionlog.RemoveFileEntry;
 import io.trino.plugin.deltalake.transactionlog.TransactionEntry;
 import io.trino.plugin.deltalake.transactionlog.statistics.DeltaLakeFileStatistics;
-import io.trino.plugin.deltalake.transactionlog.statistics.DeltaLakeJsonFileStatistics;
 import io.trino.plugin.deltalake.transactionlog.statistics.DeltaLakeParquetFileStatistics;
 import io.trino.plugin.hive.HdfsEnvironment;
 import io.trino.plugin.hive.RecordFileWriter;
@@ -229,10 +228,7 @@ public class CheckpointWriter
     private void writeJsonStats(BlockBuilder entryBlockBuilder, RowType entryType, AddFileEntry addFileEntry, int fieldId)
     {
         String statsJson = null;
-        if (addFileEntry.getStats().isPresent() && addFileEntry.getStats().get() instanceof DeltaLakeJsonFileStatistics) {
-            statsJson = addFileEntry.getStatsString().orElse(null);
-        }
-        if (addFileEntry.getStats().isPresent() && addFileEntry.getStats().get() instanceof DeltaLakeParquetFileStatistics) {
+        if (addFileEntry.getStats().isPresent()) {
             statsJson = addFileEntry.getStatsString().orElse(null);
         }
         writeString(entryBlockBuilder, entryType, fieldId, "stats", statsJson);

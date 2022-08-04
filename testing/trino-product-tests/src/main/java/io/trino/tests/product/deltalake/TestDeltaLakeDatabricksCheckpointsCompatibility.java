@@ -492,22 +492,17 @@ public class TestDeltaLakeDatabricksCheckpointsCompatibility
         try {
             sqlExecutor.accept("INSERT INTO " + qualifiedTableName + " VALUES (1,'one')");
             sqlExecutor.accept("INSERT INTO " + qualifiedTableName + " VALUES (2,'two')");
-            assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
-                    .containsOnly(ImmutableList.of(
-                            row("a_number", null, null, 0.0, null, "1", "2"),
-                            row("a_string", null, null, 0.0, null, null, null),
-                            row(null, null, null, null, 2.0, null, null)));
 
+            // SET TBLPROPERTIES increments checkpoint
             onDelta().executeQuery("ALTER TABLE default." + tableName + " SET TBLPROPERTIES ('delta.checkpoint.writeStatsAsJson' = true, 'delta.checkpoint.writeStatsAsStruct' = false)");
 
             sqlExecutor.accept("INSERT INTO " + qualifiedTableName + " VALUES (3,'three')");
-            sqlExecutor.accept("INSERT INTO " + qualifiedTableName + " VALUES (4,'four')");
 
             assertThat(onTrino().executeQuery("SHOW STATS FOR delta.default." + tableName))
                     .containsOnly(ImmutableList.of(
-                            row("a_number", null, null, 0.0, null, "1", "4"),
+                            row("a_number", null, null, 0.0, null, "1", "3"),
                             row("a_string", null, null, 0.0, null, null, null),
-                            row(null, null, null, null, 4.0, null, null)));
+                            row(null, null, null, null, 3.0, null, null)));
         }
         finally {
             onDelta().executeQuery("DROP TABLE default." + tableName);
