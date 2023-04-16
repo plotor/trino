@@ -31,3 +31,5 @@ product-test-reports
 .github/test-matrix.yaml
 .github/test-pt-matrix.yaml
 .github/bin/redshift/.cluster-identifier
+
+output

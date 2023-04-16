@@ -163,6 +163,8 @@ public class QueuedStatementResource
             throw badRequest(BAD_REQUEST, "SQL statement is empty");
         }
 
+        log.info("Receive statement: %s", statement);
+
         Query query = registerQuery(statement, servletRequest, httpHeaders);
 
         return createQueryResultsResponse(query.getQueryResults(query.getLastToken(), uriInfo));
