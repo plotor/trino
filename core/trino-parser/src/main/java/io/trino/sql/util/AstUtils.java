@@ -17,6 +17,7 @@ import com.google.common.graph.SuccessorsFunction;
 import com.google.common.graph.Traverser;
 import io.trino.sql.tree.Node;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.function.BiFunction;
@@ -88,6 +89,29 @@ public final class AstUtils
         }
 
         return result;
+    }
+
+    public static String print(Node node)
+    {
+        StringBuilder builder = new StringBuilder();
+        print(builder, node, "", "");
+        return builder.toString();
+    }
+
+    private static void print(StringBuilder buffer, Node node, String prefix, String childrenPrefix)
+    {
+        buffer.append(prefix);
+        buffer.append(node.toString());
+        buffer.append('\n');
+        for (Iterator<? extends Node> itr = node.getChildren().iterator(); itr.hasNext(); ) {
+            Node next = itr.next();
+            if (itr.hasNext()) {
+                print(buffer, next, childrenPrefix + "├── ", childrenPrefix + "│   ");
+            }
+            else {
+                print(buffer, next, childrenPrefix + "└── ", childrenPrefix + "    ");
+            }
+        }
     }
 
     private AstUtils() {}

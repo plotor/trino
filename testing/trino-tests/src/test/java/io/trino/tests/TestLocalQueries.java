@@ -113,4 +113,24 @@ public class TestLocalQueries
                         "FROM (VALUES map(ARRAY[1, 2], ARRAY[0, 0]),  map(ARRAY[28], ARRAY[2]), map(ARRAY[18], ARRAY[2]), map(ARRAY[4, 5], ARRAY[1, 0]),  map(ARRAY[12], ARRAY[3])) AS t(m)",
                 "VALUES NULL, '{\"28\":14}', '{\"18\":9}', NULL, '{\"12\":4}'");
     }
+
+    /*@Test
+    public void testOrderByAggregation()
+    {
+        String s1 = "SELECT custkey, sum(orderkey) AS orderkey FROM orders GROUP BY custkey ORDER BY sum(orderkey)";
+        String s2 = "SELECT custkey, sum(orderkey) AS a FROM  orders GROUP BY custkey ORDER BY a";
+        String s3 = "SELECT custkey orderkey, orderkey custkey FROM orders ORDER BY custkey";
+        String s4 = "SELECT custkey, orderkey FROM orders ORDER BY orderkey";
+
+        assertQuery(s1);
+        assertQueryOrdered(s1, s2);
+        // assertQueryOrdered(s3, s4);
+    }
+
+    @Test
+    public void testSumNull()
+    {
+        // assertQueryFails("SELECT sum(null)", "line 1:8: Could not choose a best candidate operator.[\\s\\S]*");
+        assertQuerySucceeds("SELECT sum(null)");
+    }*/
 }

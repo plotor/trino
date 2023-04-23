@@ -17,6 +17,7 @@ import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import io.airlift.log.Logger;
 import io.trino.execution.QueryManager;
 import io.trino.execution.resourcegroups.NoOpResourceGroupManager;
 import io.trino.execution.resourcegroups.ResourceGroupManager;
@@ -32,9 +33,14 @@ import static com.google.common.reflect.Reflection.newProxy;
 public class WorkerModule
         implements Module
 {
+
+    private static final Logger log = Logger.get(WorkerModule.class);
+
     @Override
     public void configure(Binder binder)
     {
+        log.info("Start to config Worker.");
+
         // Install no-op session supplier on workers, since only coordinators create sessions.
         binder.bind(SessionSupplier.class).to(NoOpSessionSupplier.class).in(Scopes.SINGLETON);
 

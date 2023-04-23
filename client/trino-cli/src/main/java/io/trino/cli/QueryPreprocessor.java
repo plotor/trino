@@ -71,7 +71,13 @@ public final class QueryPreprocessor
         return preprocessQuery(terminal, catalog, schema, query, ImmutableList.of("/bin/sh", "-c", preprocessorCommand), timeout);
     }
 
-    public static String preprocessQuery(Terminal terminal, Optional<String> catalog, Optional<String> schema, String query, List<String> preprocessorCommand, Duration timeout)
+    public static String preprocessQuery(
+            Terminal terminal,
+            Optional<String> catalog,
+            Optional<String> schema,
+            String query,
+            List<String> preprocessorCommand,
+            Duration timeout)
             throws QueryPreprocessorException
     {
         Thread clientThread = Thread.currentThread();

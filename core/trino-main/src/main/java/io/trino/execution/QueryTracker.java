@@ -54,6 +54,7 @@ public class QueryTracker<T extends TrackedQuery>
     private final int maxQueryHistory;
     private final Duration minQueryExpireAge;
 
+    /* [QueryId, Query] */
     private final ConcurrentMap<QueryId, T> queries = new ConcurrentHashMap<>();
     private final Queue<T> expirationQueue = new LinkedBlockingQueue<>();
 

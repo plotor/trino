@@ -156,6 +156,7 @@ public class QueryRunner
         sslSetup.accept(builder);
         OkHttpClient client = builder.build();
 
+        // 构造 StatementClient 对象，期间会请求 CN，提交 Query
         return newStatementClient(client, session, query);
     }
 

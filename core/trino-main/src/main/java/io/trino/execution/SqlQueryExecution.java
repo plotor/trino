@@ -15,6 +15,7 @@ package io.trino.execution;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.concurrent.SetThreadName;
+import io.airlift.log.Logger;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import io.trino.Session;
@@ -100,6 +101,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 public class SqlQueryExecution
         implements QueryExecution
 {
+    private static final Logger log = Logger.get(SqlQueryExecution.class);
     private final QueryStateMachine stateMachine;
     private final Slug slug;
     private final PlannerContext plannerContext;
@@ -229,6 +231,7 @@ public class SqlQueryExecution
             return;
         }
 
+        log.info("<%s> register dynamic filtering for query.", getQueryId());
         dynamicFilterService.registerQuery(this, plan.getRoot());
         stateMachine.setDynamicFiltersStatsSupplier(
                 () -> dynamicFilterService.getDynamicFilteringStats(
@@ -417,6 +420,7 @@ public class SqlQueryExecution
                 QueryScheduler scheduler = queryScheduler.get();
 
                 if (!stateMachine.isDone()) {
+                    log.info("<%s> start to run scheduler %s", getQueryId(), scheduler.getClass().getName());
                     scheduler.start();
                 }
             }
@@ -450,6 +454,7 @@ public class SqlQueryExecution
     private PlanRoot planQuery()
     {
         try {
+            log.info("<%s> start to plan query.", getQueryId());
             return doPlanQuery();
         }
         catch (StackOverflowError e) {
@@ -470,10 +475,13 @@ public class SqlQueryExecution
                 costCalculator,
                 stateMachine.getWarningCollector(),
                 planOptimizersStatsCollector);
+        // 生成逻辑执行计划
+        log.info("<%s> generate logical plan for query.", getQueryId());
         Plan plan = logicalPlanner.plan(analysis);
         queryPlan.set(plan);
 
-        // fragment the plan
+        // fragment the plan，将逻辑执行计划拆分成多个可以在分布式节点上传输和执行的片段
+        log.info("<%s> fragmented logical plan for query.", getQueryId());
         SubPlan fragmentedPlan = planFragmenter.createSubPlans(stateMachine.getSession(), plan, false, stateMachine.getWarningCollector());
 
         // extract inputs

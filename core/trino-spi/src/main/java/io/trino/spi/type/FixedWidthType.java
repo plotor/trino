@@ -25,7 +25,7 @@ public interface FixedWidthType
      * Gets the size of a value of this type in bytes. All values
      * of a FixedWidthType are the same size.
      */
-    int getFixedSize();
+    int getFixedSize(); // 获取类型的字节长度
 
     /**
      * Creates a block builder for this type sized to hold the specified number

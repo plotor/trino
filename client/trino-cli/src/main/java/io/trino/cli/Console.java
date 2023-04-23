@@ -102,9 +102,10 @@ public class Console
 
     public boolean run()
     {
+        // 构造会话 Session 对象
         ClientSession session = clientOptions.toClientSession();
-        boolean hasQuery = clientOptions.execute != null;
-        boolean isFromFile = !isNullOrEmpty(clientOptions.file);
+        boolean hasQuery = clientOptions.execute != null; // 请求是否包含 SQL 语句
+        boolean isFromFile = !isNullOrEmpty(clientOptions.file); // 是否指定从文件中读取 SQL
 
         String query = clientOptions.execute;
         if (hasQuery) {
@@ -113,6 +114,7 @@ public class Console
 
         if (isFromFile) {
             if (hasQuery) {
+                // 不能同时指定从命令行和文件中读取 SQL
                 throw new RuntimeException("both --execute and --file specified");
             }
             try {
@@ -128,6 +130,7 @@ public class Console
         if (!hasQuery && !isRealTerminal()) {
             try {
                 if (System.in.available() > 0) {
+                    // 从终端读取输入的 SQL
                     query = new String(ByteStreams.toByteArray(System.in), terminalEncoding()) + ";";
 
                     if (query.length() > 1) {
@@ -180,6 +183,7 @@ public class Console
                 clientOptions.externalAuthentication,
                 clientOptions.externalAuthenticationRedirectHandler)) {
             if (hasQuery) {
+                // 执行 Query
                 return executeCommand(
                         queryRunner,
                         exiting,
@@ -318,14 +322,14 @@ public class Console
 
     private static boolean executeCommand(
             QueryRunner queryRunner,
-            AtomicBoolean exiting,
+            AtomicBoolean exiting, // cli 是否正在退出
             String query,
             OutputFormat outputFormat,
             boolean ignoreErrors,
             boolean showProgress)
     {
         boolean success = true;
-        StatementSplitter splitter = new StatementSplitter(query);
+        StatementSplitter splitter = new StatementSplitter(query); // query 可能包含多个 SQL，按 ';' 进行分割（基于 Antlr 实现）
         for (Statement split : splitter.getCompleteStatements()) {
             if (!isEmptyStatement(split.statement())) {
                 if (!process(queryRunner, split.statement(), outputFormat, () -> {}, Optional.of(""), showProgress, getTerminal(), System.out, System.err)) {
@@ -359,6 +363,7 @@ public class Console
     {
         String finalSql;
         try {
+            // 对待执行的 SQL 执行预处理，预处理器可以通过 TRINO_PREPROCESSOR 环境变量指定预处理器
             finalSql = preprocessQuery(
                     terminal,
                     Optional.ofNullable(queryRunner.getSession().getCatalog()),
@@ -373,7 +378,7 @@ public class Console
             return false;
         }
 
-        try (Query query = queryRunner.startQuery(finalSql)) {
+        try (Query query = queryRunner.startQuery(finalSql)) { // 向 CN 节点提交 Query
             boolean success = query.renderOutput(terminal, out, errorChannel, outputFormat, pager, showProgress);
 
             ClientSession session = queryRunner.getSession();

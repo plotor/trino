@@ -85,6 +85,7 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Splits a logical plan into fragments that can be shipped and executed on distributed nodes
+ * 将逻辑执行计划拆分成多个可以在分布式节点上传输和执行的片段
  */
 public class PlanFragmenter
 {

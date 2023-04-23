@@ -163,10 +163,12 @@ public class PluginManager
     {
         ServiceLoader<Plugin> serviceLoader = ServiceLoader.load(Plugin.class, pluginClassLoader);
         List<Plugin> plugins = ImmutableList.copyOf(serviceLoader);
-        checkState(!plugins.isEmpty(), "No service providers of type %s in the classpath: %s", Plugin.class.getName(), asList(pluginClassLoader.getURLs()));
+        checkState(!plugins.isEmpty(), "No service providers of type %s in the classpath: %s",
+                Plugin.class.getName(), asList(pluginClassLoader.getURLs()));
 
         for (Plugin plugin : plugins) {
-            log.info("Installing %s", plugin.getClass().getName());
+            log.info("Installing plugin: %s, using classLoader: %s",
+                    plugin.getClass().getName(), pluginClassLoader.getClass());
             installPlugin(plugin, pluginClassLoader::duplicate);
         }
     }
@@ -261,6 +263,7 @@ public class PluginManager
     public static PluginClassLoader createClassLoader(String pluginName, List<URL> urls)
     {
         ClassLoader parent = PluginManager.class.getClassLoader();
+        log.info("Create class loader for plugin %s", pluginName);
         return new PluginClassLoader(pluginName, urls, parent, SPI_PACKAGES);
     }
 

@@ -126,7 +126,13 @@ public class Query
         return client.isClearTransactionId();
     }
 
-    public boolean renderOutput(Terminal terminal, PrintStream out, PrintStream errorChannel, OutputFormat outputFormat, Optional<String> pager, boolean showProgress)
+    public boolean renderOutput(
+            Terminal terminal,
+            PrintStream out,
+            PrintStream errorChannel,
+            OutputFormat outputFormat,
+            Optional<String> pager,
+            boolean showProgress)
     {
         Thread clientThread = Thread.currentThread();
         SignalHandler oldHandler = terminal.handle(Signal.INT, signal -> {
@@ -145,7 +151,13 @@ public class Query
         }
     }
 
-    private boolean renderQueryOutput(Terminal terminal, PrintStream out, PrintStream errorChannel, OutputFormat outputFormat, Optional<String> pager, boolean showProgress)
+    private boolean renderQueryOutput(
+            Terminal terminal,
+            PrintStream out,
+            PrintStream errorChannel,
+            OutputFormat outputFormat,
+            Optional<String> pager,
+            boolean showProgress)
     {
         StatusPrinter statusPrinter = null;
         WarningsPrinter warningsPrinter = new PrintStreamWarningsPrinter(errorChannel);

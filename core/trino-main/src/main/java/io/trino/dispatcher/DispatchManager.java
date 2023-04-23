@@ -16,6 +16,7 @@ package io.trino.dispatcher;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.log.Logger;
 import io.trino.Session;
 import io.trino.execution.QueryIdGenerator;
 import io.trino.execution.QueryInfo;
@@ -58,6 +59,8 @@ import static java.util.Objects.requireNonNull;
 
 public class DispatchManager
 {
+    private static final Logger log = Logger.get(DispatchManager.class);
+
     private final QueryIdGenerator queryIdGenerator;
     private final QueryPreparer queryPreparer;
     private final ResourceGroupManager<?> resourceGroupManager;
@@ -100,10 +103,12 @@ public class DispatchManager
         this.sessionPropertyDefaults = requireNonNull(sessionPropertyDefaults, "sessionPropertyDefaults is null");
         this.sessionPropertyManager = sessionPropertyManager;
 
+        // 默认为 100 万个字符
         this.maxQueryLength = queryManagerConfig.getMaxQueryLength();
 
         this.dispatchExecutor = dispatchExecutor.getExecutor();
 
+        // 实例化 QueryTracker
         this.queryTracker = new QueryTracker<>(queryManagerConfig, dispatchExecutor.getScheduledExecutor());
     }
 
@@ -144,8 +149,10 @@ public class DispatchManager
         // but it would still return true on call to isCancelled() after cancel() is called on it.
         DispatchQueryCreationFuture queryCreationFuture = new DispatchQueryCreationFuture();
         dispatchExecutor.execute(() -> {
+            long startMillis = System.currentTimeMillis();
             try {
                 createQueryInternal(queryId, slug, sessionContext, query, resourceGroupManager);
+                log.info("Submit query %s success, elapse: %dms", queryId, System.currentTimeMillis() - startMillis);
             }
             finally {
                 queryCreationFuture.set(null);
@@ -155,10 +162,16 @@ public class DispatchManager
     }
 
     /**
-     * Creates and registers a dispatch query with the query tracker.  This method will never fail to register a query with the query
-     * tracker.  If an error occurs while creating a dispatch query, a failed dispatch will be created and registered.
+     * Creates and registers a dispatch query with the query tracker.
+     * This method will never fail to register a query with the query tracker.
+     * If an error occurs while creating a dispatch query, a failed dispatch will be created and registered.
      */
-    private <C> void createQueryInternal(QueryId queryId, Slug slug, SessionContext sessionContext, String query, ResourceGroupManager<C> resourceGroupManager)
+    private <C> void createQueryInternal(
+            QueryId queryId,
+            Slug slug,
+            SessionContext sessionContext,
+            String query,
+            ResourceGroupManager<C> resourceGroupManager)
     {
         Session session = null;
         PreparedQuery preparedQuery = null;
@@ -169,17 +182,21 @@ public class DispatchManager
                 throw new TrinoException(QUERY_TEXT_TOO_LARGE, format("Query text length (%s) exceeds the maximum length (%s)", queryLength, maxQueryLength));
             }
 
-            // decode session
+            // 1. 基于当前会话上下文构造 Query 对应的 Session 对象
+            log.info("<%s> create session for query.", queryId);
             session = sessionSupplier.createSession(queryId, sessionContext);
 
-            // check query execute permissions
+            // 2. 检查是否有权限执行 Query
+            log.info("<%s> check execute access control for query.", queryId);
             accessControl.checkCanExecuteQuery(sessionContext.getIdentity());
 
-            // prepare query
+            // 3. 解析 SQL，生成 AST
+            log.info("<%s> parse sql for query.", queryId);
             preparedQuery = queryPreparer.prepareQuery(session, query);
 
-            // select resource group
+            // 4. 选择对应的资源组
             Optional<String> queryType = getQueryType(preparedQuery.getStatement()).map(Enum::name);
+            log.info("<%s> select resource group for query, type: %s", queryId, queryType.orElse(null));
             SelectionContext<C> selectionContext = resourceGroupManager.selectGroup(new SelectionCriteria(
                     sessionContext.getIdentity().getPrincipal().isPresent(),
                     sessionContext.getIdentity().getUser(),
@@ -192,6 +209,8 @@ public class DispatchManager
             // apply system default session properties (does not override user set properties)
             session = sessionPropertyDefaults.newSessionWithDefaultProperties(session, queryType, selectionContext.getResourceGroupId());
 
+            // 5. 生成 DispatchQuery，实现为 LocalDispatchQuery
+            log.info("<%s> create dispatch query.", queryId);
             DispatchQuery dispatchQuery = dispatchQueryFactory.createDispatchQuery(
                     session,
                     sessionContext.getTransactionId(),
@@ -200,9 +219,11 @@ public class DispatchManager
                     slug,
                     selectionContext.getResourceGroupId());
 
+            // 6. 将 Query 记录到 QueryTracker 中并提交执行
             boolean queryAdded = queryCreated(dispatchQuery);
             if (queryAdded && !dispatchQuery.isDone()) {
                 try {
+                    log.info("<%s> submit dispatch query.", queryId);
                     resourceGroupManager.submit(dispatchQuery, selectionContext, dispatchExecutor);
                 }
                 catch (Throwable e) {

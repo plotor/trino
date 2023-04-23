@@ -30,7 +30,7 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toUnmodifiableList;
 
 @Immutable
-public final class TypeSignature
+public final class TypeSignature // 类型签名
 {
     private static final String TIMESTAMP_WITH_TIME_ZONE = "timestamp with time zone";
     private static final String TIMESTAMP_WITHOUT_TIME_ZONE = "timestamp without time zone";

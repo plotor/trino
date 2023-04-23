@@ -96,7 +96,8 @@ public class Server
         verifySystemTimeIsReasonable();
 
         Logger log = Logger.get(Server.class);
-        log.info("Java version: %s", StandardSystemProperty.JAVA_VERSION.value());
+        log.info("Java version is %s, and Trino version is %s",
+                StandardSystemProperty.JAVA_VERSION.value(), trinoVersion);
 
         ImmutableList.Builder<Module> modules = ImmutableList.builder();
         modules.add(
@@ -123,22 +124,32 @@ public class Server
                 new TransactionManagerModule(),
                 new ServerMainModule(trinoVersion),
                 new GracefulShutdownModule(),
-                new WarningCollectorModule());
+                new WarningCollectorModule()
+        );
 
         modules.addAll(getAdditionalModules());
 
         Bootstrap app = new Bootstrap(modules.build());
-
         try {
+            boolean strictConfig = Boolean.parseBoolean(System.getenv("STRICT_CONFIG"));
+            if (!strictConfig) {
+                app.nonStrictConfig();
+            }
+
             Injector injector = app.initialize();
 
             log.info("Trino version: %s", injector.getInstance(NodeVersion.class).getVersion());
             logLocation(log, "Working directory", Paths.get("."));
             logLocation(log, "Etc directory", Paths.get("etc"));
 
-            injector.getInstance(PluginInstaller.class).loadPlugins();
+            // 加载 plugins
+            PluginInstaller pluginInstaller = injector.getInstance(PluginInstaller.class);
+            log.info("Start to load plugins by %s", pluginInstaller.getClass().getName());
+            pluginInstaller.loadPlugins();
 
+            // 加载静态的 catalog
             ConnectorServicesProvider connectorServicesProvider = injector.getInstance(ConnectorServicesProvider.class);
+            log.info("Start to load initial catalogs by %s", connectorServicesProvider.getClass().getName());
             connectorServicesProvider.loadInitialCatalogs();
 
             // Only static catalog manager announces catalogs
@@ -155,15 +166,24 @@ public class Server
                 updateConnectorIds(injector.getInstance(Announcer.class), catalogManager);
             }
 
+            // etc/session-property-config.properties
             injector.getInstance(SessionPropertyDefaults.class).loadConfigurationManager();
+            // etc/resource-groups.properties
             injector.getInstance(ResourceGroupManager.class).loadConfigurationManager();
+            // etc/access-control.properties
             injector.getInstance(AccessControlManager.class).loadSystemAccessControl();
+            // etc/password-authenticator.properties
             injector.getInstance(optionalKey(PasswordAuthenticatorManager.class))
                     .ifPresent(PasswordAuthenticatorManager::loadPasswordAuthenticator);
+            // etc/event-listener.properties
             injector.getInstance(EventListenerManager.class).loadEventListeners();
+            // etc/group-provider.properties
             injector.getInstance(GroupProviderManager.class).loadConfiguredGroupProvider();
+            // etc/exchange-manager.properties
             injector.getInstance(ExchangeManagerRegistry.class).loadExchangeManager();
+            // etc/certificate-authenticator.properties
             injector.getInstance(CertificateAuthenticatorManager.class).loadCertificateAuthenticator();
+            // etc/header-authenticator.properties
             injector.getInstance(optionalKey(HeaderAuthenticatorManager.class))
                     .ifPresent(HeaderAuthenticatorManager::loadHeaderAuthenticator);
 

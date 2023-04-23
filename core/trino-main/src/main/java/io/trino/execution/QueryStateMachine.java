@@ -924,41 +924,45 @@ public class QueryStateMachine
     public boolean transitionToWaitingForResources()
     {
         queryStateTimer.beginWaitingForResources();
+        QUERY_STATE_LOG.info("<%s> transition query state from %s to %s", getQueryId(), getQueryState(), WAITING_FOR_RESOURCES);
         return queryState.setIf(WAITING_FOR_RESOURCES, currentState -> currentState.ordinal() < WAITING_FOR_RESOURCES.ordinal());
     }
 
     public boolean transitionToDispatching()
     {
         queryStateTimer.beginDispatching();
+        QUERY_STATE_LOG.info("<%s> transition query state from %s to %s", getQueryId(), getQueryState(), DISPATCHING);
         return queryState.setIf(DISPATCHING, currentState -> currentState.ordinal() < DISPATCHING.ordinal());
     }
 
     public boolean transitionToPlanning()
     {
         queryStateTimer.beginPlanning();
+        QUERY_STATE_LOG.info("<%s> transition query state from %s to %s", getQueryId(), getQueryState(), PLANNING);
         return queryState.setIf(PLANNING, currentState -> currentState.ordinal() < PLANNING.ordinal());
     }
 
     public boolean transitionToStarting()
     {
         queryStateTimer.beginStarting();
+        QUERY_STATE_LOG.info("<%s> transition query state from %s to %s", getQueryId(), getQueryState(), STARTING);
         return queryState.setIf(STARTING, currentState -> currentState.ordinal() < STARTING.ordinal());
     }
 
     public boolean transitionToRunning()
     {
         queryStateTimer.beginRunning();
+        QUERY_STATE_LOG.info("<%s> transition query state from %s to %s", getQueryId(), getQueryState(), RUNNING);
         return queryState.setIf(RUNNING, currentState -> currentState.ordinal() < RUNNING.ordinal());
     }
 
     public boolean transitionToFinishing()
     {
         queryStateTimer.beginFinishing();
-
+        QUERY_STATE_LOG.info("<%s> transition query state from %s to %s", getQueryId(), getQueryState(), FINISHING);
         if (!queryState.setIf(FINISHING, currentState -> currentState != FINISHING && !currentState.isDone())) {
             return false;
         }
-
         try {
             cleanupQuery();
         }
@@ -1011,6 +1015,7 @@ public class QueryStateMachine
 
         queryStateTimer.endQuery();
 
+        QUERY_STATE_LOG.info("<%s> transition query state from %s to %s", getQueryId(), getQueryState(), FINISHED);
         queryState.setIf(FINISHED, currentState -> !currentState.isDone());
     }
 

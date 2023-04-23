@@ -14,6 +14,7 @@
 package io.trino.execution;
 
 import com.google.common.collect.ImmutableList;
+import io.airlift.log.Logger;
 import io.trino.Session;
 import io.trino.spi.TrinoException;
 import io.trino.spi.resourcegroups.QueryType;
@@ -23,6 +24,7 @@ import io.trino.sql.tree.Execute;
 import io.trino.sql.tree.ExplainAnalyze;
 import io.trino.sql.tree.Expression;
 import io.trino.sql.tree.Statement;
+import io.trino.sql.util.AstUtils;
 
 import javax.inject.Inject;
 
@@ -41,6 +43,8 @@ import static java.util.Objects.requireNonNull;
 
 public class QueryPreparer
 {
+    private static final Logger log = Logger.get(QueryPreparer.class);
+
     private final SqlParser sqlParser;
 
     @Inject
@@ -53,6 +57,7 @@ public class QueryPreparer
             throws ParsingException, TrinoException
     {
         Statement wrappedStatement = sqlParser.createStatement(query, createParsingOptions(session));
+        log.info("AST for query %s is:\n%s", query, AstUtils.print(wrappedStatement));
         return prepareQuery(session, wrappedStatement);
     }
 

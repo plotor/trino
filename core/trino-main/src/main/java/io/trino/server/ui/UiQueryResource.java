@@ -14,6 +14,7 @@
 package io.trino.server.ui;
 
 import com.google.common.collect.ImmutableList;
+import io.airlift.log.Logger;
 import io.trino.dispatcher.DispatchManager;
 import io.trino.execution.QueryInfo;
 import io.trino.execution.QueryState;
@@ -55,6 +56,8 @@ import static java.util.Objects.requireNonNull;
 @Path("/ui/api/query")
 public class UiQueryResource
 {
+    private static final Logger log = Logger.get(UiQueryResource.class);
+
     private final DispatchManager dispatchManager;
     private final AccessControl accessControl;
     private final HttpRequestSessionContextFactory sessionContextFactory;
@@ -71,11 +74,13 @@ public class UiQueryResource
 
     @ResourceSecurity(WEB_UI)
     @GET
-    public List<TrimmedBasicQueryInfo> getAllQueryInfo(@QueryParam("state") String stateFilter, @Context HttpServletRequest servletRequest, @Context HttpHeaders httpHeaders)
+    public List<TrimmedBasicQueryInfo> getAllQueryInfo(
+            @QueryParam("state") String stateFilter, @Context HttpServletRequest servletRequest, @Context HttpHeaders httpHeaders)
     {
         QueryState expectedState = stateFilter == null ? null : QueryState.valueOf(stateFilter.toUpperCase(Locale.ENGLISH));
 
         List<BasicQueryInfo> queries = dispatchManager.getQueries();
+        log.info("Get all query info, and {} queries found.", queries.size());
         queries = filterQueries(sessionContextFactory.extractAuthorizedIdentity(servletRequest, httpHeaders, alternateHeaderName), queries, accessControl);
 
         ImmutableList.Builder<TrimmedBasicQueryInfo> builder = ImmutableList.builder();

@@ -146,6 +146,7 @@ public class QueryMonitor
 
     public void queryCreatedEvent(BasicQueryInfo queryInfo)
     {
+        log.info("<QUERY CREATED> %s", queryInfo.getQueryId());
         eventListenerManager.queryCreated(
                 new QueryCreatedEvent(
                         queryInfo.getQueryStats().getCreateTime().toDate().toInstant(),
@@ -171,6 +172,7 @@ public class QueryMonitor
 
     public void queryImmediateFailureEvent(BasicQueryInfo queryInfo, ExecutionFailureInfo failure)
     {
+        log.info("<QUERY IMMEDIATE FAILURE> %s", queryInfo.getQueryId());
         eventListenerManager.queryCompleted(requiresAnonymizedPlan -> new QueryCompletedEvent(
                 new QueryMetadata(
                         queryInfo.getQueryId().toString(),
@@ -244,6 +246,7 @@ public class QueryMonitor
 
     public void queryCompletedEvent(QueryInfo queryInfo)
     {
+        log.info("<QUERY COMPLETED> %s", queryInfo.getQueryId());
         QueryStats queryStats = queryInfo.getQueryStats();
         eventListenerManager.queryCompleted(requiresAnonymizedPlan ->
                 new QueryCompletedEvent(
@@ -338,7 +341,11 @@ public class QueryMonitor
                 serializedPlanNodeStatsAndCosts);
     }
 
-    private QueryContext createQueryContext(SessionRepresentation session, Optional<ResourceGroupId> resourceGroup, Optional<QueryType> queryType, RetryPolicy retryPolicy)
+    private QueryContext createQueryContext(
+            SessionRepresentation session,
+            Optional<ResourceGroupId> resourceGroup,
+            Optional<QueryType> queryType,
+            RetryPolicy retryPolicy)
     {
         return new QueryContext(
                 session.getUser(),

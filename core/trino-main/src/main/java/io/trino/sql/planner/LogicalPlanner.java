@@ -152,6 +152,9 @@ import static io.trino.sql.tree.ComparisonExpression.Operator.GREATER_THAN_OR_EQ
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+/**
+ * 负责生成逻辑执行计划
+ */
 public class LogicalPlanner
 {
     private static final Logger LOG = Logger.get(LogicalPlanner.class);
@@ -250,7 +253,9 @@ public class LogicalPlanner
 
         if (stage.ordinal() >= OPTIMIZED.ordinal()) {
             for (PlanOptimizer optimizer : planOptimizers) {
-                root = optimizer.optimize(root, session, symbolAllocator.getTypes(), symbolAllocator, idAllocator, warningCollector, planOptimizersStatsCollector, tableStatsProvider);
+                LOG.info("Optimize plan by optimizer %s", optimizer.getClass().getName());
+                root = optimizer.optimize(root, session, symbolAllocator.getTypes(), symbolAllocator,
+                        idAllocator, warningCollector, planOptimizersStatsCollector, tableStatsProvider);
                 if (root == null) {
                     throw new NullPointerException(optimizer.getClass().getName() + " returned a null plan");
                 }

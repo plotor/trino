@@ -70,6 +70,9 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN_TYPE;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
+/**
+ * 处理 EXECUTING 状态的查询
+ */
 @Path("/v1/statement/executing")
 public class ExecutingStatementResource
 {
@@ -169,12 +172,14 @@ public class ExecutingStatementResource
             @Context UriInfo uriInfo,
             @Suspended AsyncResponse asyncResponse)
     {
+        log.info("<%s> get query results, queryId: %s", uriInfo.getPath(), queryId.getId());
         Query query = getQuery(queryId, slug, token);
         asyncQueryResults(query, token, maxWait, targetResultSize, uriInfo, asyncResponse);
     }
 
     protected Query getQuery(QueryId queryId, String slug, long token)
     {
+        log.info("Get query %s, slug is %s", queryId.getId(), slug);
         Query query = queries.get(queryId);
         if (query != null) {
             if (!query.isSlugValid(slug, token)) {
@@ -288,8 +293,10 @@ public class ExecutingStatementResource
     public Response cancelQuery(
             @PathParam("queryId") QueryId queryId,
             @PathParam("slug") String slug,
-            @PathParam("token") long token)
+            @PathParam("token") long token,
+            @Context UriInfo uriInfo)
     {
+        log.info("<%s> cancel query %s", uriInfo.getPath(), queryId.getId());
         Query query = queries.get(queryId);
         if (query != null) {
             if (!query.isSlugValid(slug, token)) {
@@ -319,8 +326,10 @@ public class ExecutingStatementResource
             @PathParam("queryId") QueryId queryId,
             @PathParam("stage") int stage,
             @PathParam("slug") String slug,
-            @PathParam("token") long token)
+            @PathParam("token") long token,
+            @Context UriInfo uriInfo)
     {
+        log.info("<%s> cancel query %s, stage: %d", uriInfo.getPath(), queryId.getId(), stage);
         Query query = getQuery(queryId, slug, token);
         query.partialCancel(stage);
     }

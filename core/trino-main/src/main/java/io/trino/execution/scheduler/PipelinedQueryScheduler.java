@@ -724,6 +724,7 @@ public class PipelinedQueryScheduler
 
             InternalNode coordinator = nodeScheduler.createNodeSelector(queryStateMachine.getSession(), Optional.empty()).selectCurrentNode();
             for (StageExecution stageExecution : stageExecutions) {
+                log.info("<%s> schedule task for state %s", queryStateMachine.getQueryId(), stageExecution.getStageId());
                 Optional<RemoteTask> remoteTask = stageExecution.scheduleTask(
                         coordinator,
                         0,

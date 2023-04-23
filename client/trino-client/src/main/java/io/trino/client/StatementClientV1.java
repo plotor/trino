@@ -114,8 +114,10 @@ class StatementClientV1
                 .collect(toImmutableSet())));
         this.compressionDisabled = session.isCompressionDisabled();
 
+        // 构造 Request 对象，请求 /v1/statement 接口
         Request request = buildQueryRequest(session, query);
 
+        // 这一步会请求 CN 提交 Query，此时 Query 状态是 QUEUED
         // Always materialize the first response to avoid losing the response body if the initial response parsing fails
         JsonResponse<QueryResults> response = JsonResponse.execute(QUERY_RESULTS_CODEC, httpClient, request, OptionalLong.empty());
         if ((response.getStatusCode() != HTTP_OK) || !response.hasValue()) {

@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>io.trino.spi.type.Type</OriginalElement>
+  <nodes>
+    <node x="700.0" y="232.0">io.trino.spi.type.CharType</node>
+    <node x="866.0000000000002" y="232.0">io.trino.spi.type.VarbinaryType</node>
+    <node x="3344.25" y="66.0">io.trino.spi.type.FixedWidthType</node>
+    <node x="1073.0000000000002" y="232.0">io.trino.spi.type.P4HyperLogLogType</node>
+    <node x="4707.0" y="149.0">io.trino.spi.type.TimeWithTimeZoneType</node>
+    <node x="2592.25" y="149.0">io.trino.spi.type.BooleanType</node>
+    <node x="766.75" y="149.0">io.trino.spi.type.RowType</node>
+    <node x="1508.5757575757577" y="149.0">io.trino.spi.type.ArrayType</node>
+    <node x="2734.0" y="232.0">io.trino.spi.type.ShortTimestampWithTimeZoneType</node>
+    <node x="1941.0" y="232.0">io.trino.spi.type.IntegerType</node>
+    <node x="2461.0" y="232.0">io.trino.spi.type.BigintType</node>
+    <node x="4473.0" y="149.0">io.trino.spi.type.DoubleType</node>
+    <node x="459.0" y="232.0">io.trino.spi.type.HyperLogLogType</node>
+    <node x="2342.5" y="149.0">io.trino.spi.type.AbstractLongType</node>
+    <node x="1924.5" y="149.0">io.trino.spi.type.AbstractIntType</node>
+    <node x="4516.0" y="232.0">io.trino.spi.type.ShortTimeWithTimeZoneType</node>
+    <node x="3124.0" y="232.0">io.trino.spi.type.LongTimestampWithTimeZoneType</node>
+    <node x="4280.0" y="232.0">io.trino.spi.type.LongDecimalType</node>
+    <node x="1337.0000000000002" y="232.0">io.trino.spi.type.VarcharType</node>
+    <node x="4040.0" y="232.0">io.trino.spi.type.ShortDecimalType</node>
+    <node x="181.25000000000023" y="232.0">io.trino.spi.type.QuantileDigestType</node>
+    <node x="2786.25" y="149.0">io.trino.spi.type.UuidType</node>
+    <node x="3130.0" y="-17.0">io.trino.spi.type.Type</node>
+    <node x="1345.5757575757577" y="149.0">io.trino.spi.type.MapType</node>
+    <node x="2951.25" y="149.0">io.trino.spi.type.TimestampWithTimeZoneType</node>
+    <node x="928.7500000000002" y="149.0">io.trino.spi.type.AbstractVariableWidthType</node>
+    <node x="3777.0" y="232.0">io.trino.spi.type.LongTimestampType</node>
+    <node x="803.3750000000002" y="66.0">io.trino.spi.type.VariableWidthType</node>
+    <node x="4182.0" y="149.0">io.trino.spi.type.DecimalType</node>
+    <node x="2127.0" y="232.0">io.trino.spi.type.DateType</node>
+    <node x="2293.0" y="232.0">io.trino.spi.type.TimeType</node>
+    <node x="2764.75" y="66.0">io.trino.spi.type.AbstractType</node>
+    <node x="1779.0000000000002" y="232.0">io.trino.spi.type.RealType</node>
+    <node x="3358.72095959596" y="149.0">io.trino.spi.type.TinyintType</node>
+    <node x="3511.0" y="232.0">io.trino.spi.type.ShortTimestampType</node>
+    <node x="3666.25" y="149.0">io.trino.spi.type.TimestampType</node>
+    <node x="4999.0" y="149.0">io.trino.spi.type.SmallintType</node>
+    <node x="4854.0" y="232.0">io.trino.spi.type.LongTimeWithTimeZoneType</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="io.trino.spi.type.TinyintType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="40.75" y="-16.5" />
+      <point x="3480.97095959596" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.HyperLogLogType" target="io.trino.spi.type.AbstractVariableWidthType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="569.5" y="207.0" />
+      <point x="1077.2500000000002" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.AbstractLongType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="55.0" y="-16.5" />
+      <point x="2507.5" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.DecimalType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-43.5" y="-16.5" />
+      <point x="4225.5" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.ShortTimeWithTimeZoneType" target="io.trino.spi.type.TimeWithTimeZoneType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="4675.0" y="207.0" />
+      <point x="4843.0" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.ShortDecimalType" target="io.trino.spi.type.DecimalType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="4150.0" y="207.0" />
+      <point x="4269.0" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.AbstractVariableWidthType" target="io.trino.spi.type.VariableWidthType" relationship="REALIZATION">
+      <point x="-74.25" y="-16.5" />
+      <point x="1003.0000000000002" y="119.0" />
+      <point x="915.3750000000002" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.BigintType" target="io.trino.spi.type.AbstractLongType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="2538.0" y="207.0" />
+      <point x="2452.5" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.DecimalType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="43.5" y="-16.5" />
+      <point x="4312.5" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.TimestampWithTimeZoneType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-81.0" y="-16.5" />
+      <point x="3032.25" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.LongTimestampWithTimeZoneType" target="io.trino.spi.type.TimestampWithTimeZoneType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="3307.5" y="207.0" />
+      <point x="3113.25" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.TimestampType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="50.0" y="-16.5" />
+      <point x="3816.25" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.AbstractType" target="io.trino.spi.type.Type" relationship="REALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="2853.75" y="36.0" />
+      <point x="3156.5" y="36.0" />
+      <point x="-26.5" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.LongTimeWithTimeZoneType" target="io.trino.spi.type.TimeWithTimeZoneType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="5011.0" y="207.0" />
+      <point x="4843.0" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.FixedWidthType" target="io.trino.spi.type.Type" relationship="INTERFACE_GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="3444.75" y="36.0" />
+      <point x="3209.5" y="36.0" />
+      <point x="26.5" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.AbstractLongType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-55.0" y="-16.5" />
+      <point x="2397.5" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.AbstractVariableWidthType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="74.25" y="-16.5" />
+      <point x="1151.5000000000002" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.P4HyperLogLogType" target="io.trino.spi.type.AbstractVariableWidthType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="1195.0000000000002" y="207.0" />
+      <point x="1077.2500000000002" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.IntegerType" target="io.trino.spi.type.AbstractIntType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.RowType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="837.75" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.TimestampWithTimeZoneType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="81.0" y="-16.5" />
+      <point x="3194.25" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.DoubleType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-41.5" y="-16.5" />
+      <point x="4514.5" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.ArrayType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="1584.0757575757577" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.DoubleType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="41.5" y="-16.5" />
+      <point x="4597.5" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.LongTimestampType" target="io.trino.spi.type.TimestampType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="3898.5" y="207.0" />
+      <point x="3766.25" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.UuidType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="36.25" y="-16.5" />
+      <point x="2895.0" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.LongDecimalType" target="io.trino.spi.type.DecimalType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="4388.0" y="207.0" />
+      <point x="4269.0" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.RealType" target="io.trino.spi.type.AbstractIntType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="1850.0000000000002" y="207.0" />
+      <point x="2024.0000000000002" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.VariableWidthType" target="io.trino.spi.type.Type" relationship="INTERFACE_GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="915.3750000000002" y="46.0" />
+      <point x="3444.75" y="46.0" />
+      <point x="3444.75" y="36.0" />
+      <point x="3209.5" y="36.0" />
+      <point x="26.5" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.CharType" target="io.trino.spi.type.AbstractVariableWidthType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="773.0" y="207.0" />
+      <point x="1077.2500000000002" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.TimeWithTimeZoneType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-68.0" y="-16.5" />
+      <point x="4775.0" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.VarbinaryType" target="io.trino.spi.type.AbstractVariableWidthType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="959.5000000000002" y="207.0" />
+      <point x="1077.2500000000002" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.DateType" target="io.trino.spi.type.AbstractIntType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="2200.0" y="207.0" />
+      <point x="2024.0000000000002" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.TimeWithTimeZoneType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="68.0" y="-16.5" />
+      <point x="4911.0" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.UuidType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-36.25" y="-16.5" />
+      <point x="2822.5" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.TimestampType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-50.0" y="-16.5" />
+      <point x="3716.25" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.BooleanType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="43.5" y="-16.5" />
+      <point x="2722.75" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.ShortTimestampType" target="io.trino.spi.type.TimestampType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="3634.0" y="207.0" />
+      <point x="3766.25" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.ShortTimestampWithTimeZoneType" target="io.trino.spi.type.TimestampWithTimeZoneType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="2919.0" y="207.0" />
+      <point x="3113.25" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.TinyintType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-40.75" y="-16.5" />
+      <point x="3399.47095959596" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.SmallintType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-43.25" y="-16.5" />
+      <point x="5042.25" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.AbstractIntType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="49.75" y="-16.5" />
+      <point x="2073.75" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.SmallintType" target="io.trino.spi.type.FixedWidthType" relationship="REALIZATION">
+      <point x="43.25" y="-16.5" />
+      <point x="5128.75" y="119.0" />
+      <point x="3444.75" y="119.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.VarcharType" target="io.trino.spi.type.AbstractVariableWidthType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="1423.0000000000002" y="207.0" />
+      <point x="1077.2500000000002" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.MapType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="1417.0757575757577" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.AbstractIntType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-49.75" y="-16.5" />
+      <point x="1974.2500000000002" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.QuantileDigestType" target="io.trino.spi.type.AbstractVariableWidthType" relationship="GENERALIZATION">
+      <point x="-0.0" y="-16.5" />
+      <point x="296.2500000000002" y="-34.5" />
+      <point x="1077.2500000000002" y="-34.5" />
+      <point x="-0.0" y="-16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.BooleanType" target="io.trino.spi.type.AbstractType" relationship="GENERALIZATION">
+      <point x="-43.5" y="-16.5" />
+      <point x="2635.75" y="129.0" />
+      <point x="2853.75" y="129.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+    <edge source="io.trino.spi.type.TimeType" target="io.trino.spi.type.AbstractLongType" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.5" />
+      <point x="2367.0" y="207.0" />
+      <point x="2452.5" y="207.0" />
+      <point x="0.0" y="16.5" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic" zoom="0.3065708852736108" showDependencies="false" x="2547.5" y="112.79772570640944" />
+  <SelectedNodes>
+    <node>io.trino.spi.type.QuantileDigestType</node>
+  </SelectedNodes>
+  <Categories />
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+

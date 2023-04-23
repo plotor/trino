@@ -22,6 +22,7 @@ import com.google.inject.multibindings.Multibinder;
 import io.airlift.concurrent.BoundedExecutor;
 import io.airlift.configuration.AbstractConfigurationAwareModule;
 import io.airlift.http.server.HttpServerConfig;
+import io.airlift.log.Logger;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import io.trino.cost.CostCalculator;
@@ -144,9 +145,13 @@ import static org.weakref.jmx.guice.ExportBinder.newExporter;
 public class CoordinatorModule
         extends AbstractConfigurationAwareModule
 {
+    private static final Logger log = Logger.get(CoordinatorModule.class);
+
     @Override
     protected void setup(Binder binder)
     {
+        log.info("Start to config Coordinator.");
+
         install(new WebUiModule());
 
         // coordinator announcement

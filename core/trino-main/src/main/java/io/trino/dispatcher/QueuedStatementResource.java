@@ -98,6 +98,9 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
+/**
+ * 处理 QUEUED 状态的查询
+ */
 @Path("/v1/statement")
 public class QueuedStatementResource
 {
@@ -135,12 +138,14 @@ public class QueuedStatementResource
         this.queryInfoUrlFactory = requireNonNull(queryInfoUrlTemplate, "queryInfoUrlTemplate is null");
         this.compressionEnabled = serverConfig.isQueryResultsCompressionEnabled();
         this.alternateHeaderName = protocolConfig.getAlternateHeaderName();
-        queryManager = new QueryManager(queryManagerConfig.getClientTimeout());
+        // 构造 QueryManager 对象
+        this.queryManager = new QueryManager(queryManagerConfig.getClientTimeout());
     }
 
     @PostConstruct
     public void start()
     {
+        // 初始化 QueryManager，启动定时调度器
         queryManager.initialize(dispatchManager);
     }
 
@@ -163,8 +168,9 @@ public class QueuedStatementResource
             throw badRequest(BAD_REQUEST, "SQL statement is empty");
         }
 
-        log.info("Receive statement: %s", statement);
+        log.info("<%s> receive statement: %s", uriInfo.getPath(), statement);
 
+        // 基于请求的 query 和本次请求的环境信息构造 Query 对象，并注册到 QueryManager 中
         Query query = registerQuery(statement, servletRequest, httpHeaders);
 
         return createQueryResultsResponse(query.getQueryResults(query.getLastToken(), uriInfo));
@@ -180,8 +186,11 @@ public class QueuedStatementResource
 
         MultivaluedMap<String, String> headers = httpHeaders.getRequestHeaders();
 
+        // 基于当前请求的环境信息构造 SessionContext 对象
         SessionContext sessionContext = sessionContextFactory.createSessionContext(headers, alternateHeaderName, remoteAddress, identity);
+        // 封装当前请求和上下文信息为 Query 对象
         Query query = new Query(statement, sessionContext, dispatchManager, queryInfoUrlFactory);
+        // 注册 Query，本质上以内存 map 承载
         queryManager.registerQuery(query);
 
         // let authentication filter know that identity lifecycle has been handed off
@@ -202,6 +211,7 @@ public class QueuedStatementResource
             @Context UriInfo uriInfo,
             @Suspended AsyncResponse asyncResponse)
     {
+        log.info("<%s> get query status, queryId: %s, maxWait: %s", uriInfo.getPath(), queryId, maxWait);
         Query query = getQuery(queryId, slug, token);
 
         ListenableFuture<Response> future = getStatus(query, token, maxWait, uriInfo);
@@ -212,13 +222,13 @@ public class QueuedStatementResource
     {
         long waitMillis = WAIT_ORDERING.min(MAX_WAIT_TIME, maxWait).toMillis();
 
-        return FluentFuture.from(query.waitForDispatched())
+        return FluentFuture.from(query.waitForDispatched()) // 异步提交执行 waitForDispatched
                 // wait for query to be dispatched, up to the wait timeout
-                .withTimeout(waitMillis, MILLISECONDS, timeoutExecutor)
-                .catching(TimeoutException.class, ignored -> null, directExecutor())
+                .withTimeout(waitMillis, MILLISECONDS, timeoutExecutor) // 超时等待 waitForDispatched 执行完成（默认为 1s）
+                .catching(TimeoutException.class, ignored -> null, directExecutor()) // 设置超时 fallback 的策略，这里直接返回 null
                 // when state changes, fetch the next result
-                .transform(ignored -> query.getQueryResults(token, uriInfo), responseExecutor)
-                .transform(this::createQueryResultsResponse, directExecutor());
+                .transform(ignored -> query.getQueryResults(token, uriInfo), responseExecutor) // 构造 QueryResults，不管前面是否执行超时
+                .transform(this::createQueryResultsResponse, directExecutor()); // 基于 QueryResults 构造 Response 返回
     }
 
     @ResourceSecurity(PUBLIC)
@@ -228,10 +238,11 @@ public class QueuedStatementResource
     public Response cancelQuery(
             @PathParam("queryId") QueryId queryId,
             @PathParam("slug") String slug,
-            @PathParam("token") long token)
+            @PathParam("token") long token,
+            @Context UriInfo uriInfo)
     {
-        getQuery(queryId, slug, token)
-                .cancel();
+        log.info("<%s> request to cancel query %s", uriInfo.getPath(), queryId);
+        getQuery(queryId, slug, token).cancel();
         return Response.noContent().build();
     }
 
@@ -239,6 +250,7 @@ public class QueuedStatementResource
     {
         Query query = queryManager.getQuery(queryId);
         if (query == null || !query.getSlug().isValid(QUEUED_QUERY, slug, token)) {
+            log.error("Query %s not found.", queryId);
             throw badRequest(NOT_FOUND, "Query not found");
         }
         return query;
@@ -313,7 +325,9 @@ public class QueuedStatementResource
         private final AtomicLong lastToken = new AtomicLong();
 
         private final long initTime = System.nanoTime();
+        // 标识当前 Query 是否正在或已经被提交（控制只能被提交一次），即提交给 DispatchManager 执行
         private final AtomicReference<Boolean> submissionGate = new AtomicReference<>();
+        // 异步监听 Query 的解析提交状态
         private final SettableFuture<Void> creationFuture = SettableFuture.create();
 
         public Query(String query, SessionContext sessionContext, DispatchManager dispatchManager, QueryInfoUrlFactory queryInfoUrlFactory)
@@ -322,8 +336,7 @@ public class QueuedStatementResource
             this.sessionContext = requireNonNull(sessionContext, "sessionContext is null");
             this.dispatchManager = requireNonNull(dispatchManager, "dispatchManager is null");
             this.queryId = dispatchManager.createQueryId();
-            requireNonNull(queryInfoUrlFactory, "queryInfoUrlFactory is null");
-            this.queryInfoUrl = queryInfoUrlFactory.getQueryInfoUrl(queryId);
+            this.queryInfoUrl = requireNonNull(queryInfoUrlFactory, "queryInfoUrlFactory is null").getQueryInfoUrl(queryId);
         }
 
         public QueryId getQueryId()
@@ -353,22 +366,28 @@ public class QueuedStatementResource
 
         public boolean isCreated()
         {
+            // Query 是否已完成解析并提交
             return creationFuture.isDone();
         }
 
         private ListenableFuture<Void> waitForDispatched()
         {
+            // 异步解析并提交 Query
             submitIfNeeded();
             if (!creationFuture.isDone()) {
+                // Query 还没有完成提交
+                log.info("Query is under submitting: %s", queryId);
                 return nonCancellationPropagating(creationFuture);
             }
             // otherwise, wait for the query to finish
+            log.info("Waiting for the query to dispatch: %s", queryId);
             return dispatchManager.waitForDispatched(queryId);
         }
 
         private void submitIfNeeded()
         {
             if (submissionGate.compareAndSet(null, true)) {
+                // 解析并提交 Query
                 creationFuture.setFuture(dispatchManager.createQuery(queryId, slug, sessionContext, query));
             }
         }
@@ -475,6 +494,10 @@ public class QueuedStatementResource
     @ThreadSafe
     private static class QueryManager
     {
+        /*
+         * Query 注册管理器，管理 QueryId 和 Query 对象之间的映射关系，提供定期清理支持
+         */
+
         private final ConcurrentMap<QueryId, Query> queries = new ConcurrentHashMap<>();
         private final ScheduledExecutorService scheduledExecutorService = newSingleThreadScheduledExecutor(daemonThreadsNamed("drain-state-query-manager"));
 
@@ -482,6 +505,7 @@ public class QueuedStatementResource
 
         public QueryManager(Duration querySubmissionTimeout)
         {
+            // 会话超时时间，默认为 5 分钟
             this.querySubmissionTimeout = requireNonNull(querySubmissionTimeout, "querySubmissionTimeout is null");
         }
 
@@ -497,6 +521,10 @@ public class QueuedStatementResource
 
         private void syncWith(DispatchManager dispatchManager)
         {
+            if (log.isDebugEnabled()) {
+                log.debug("Check if query should be purged, querySize: %d", queries.size());
+            }
+            // 遍历在册的所有 Query，判断并注销符合要求的 Query
             queries.forEach((queryId, query) -> {
                 if (shouldBePurged(dispatchManager, query)) {
                     removeQuery(queryId);
@@ -523,29 +551,34 @@ public class QueuedStatementResource
 
         private void removeQuery(QueryId queryId)
         {
+            log.info("Remove query %s", queryId.getId());
             Optional.ofNullable(queries.remove(queryId))
                     .ifPresent(QueryManager::destroyQuietly);
         }
 
         private static void destroyQuietly(Query query)
         {
+            QueryId queryId = query.getQueryId();
             try {
+                log.info("Start to destroy query %s", queryId);
                 query.destroy();
             }
             catch (Throwable t) {
-                log.error(t, "Error destroying query");
+                log.error(t, "Error destroying query %s", queryId);
             }
         }
 
         public void registerQuery(Query query)
         {
+            log.info("Register query %s", query.getQueryId());
             Query existingQuery = queries.putIfAbsent(query.getQueryId(), query);
-            checkState(existingQuery == null, "Query already registered");
+            checkState(existingQuery == null, "Query already registered: " + query.getQueryId());
         }
 
         @Nullable
         public Query getQuery(QueryId queryId)
         {
+            log.info("Get query from manager: %s", queryId);
             return queries.get(queryId);
         }
     }

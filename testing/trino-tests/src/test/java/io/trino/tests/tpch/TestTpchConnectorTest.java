@@ -210,4 +210,10 @@ public class TestTpchConnectorTest
                 .setSchema(schemaName)
                 .build();
     }
+
+    @Test
+    public void testQuery()
+    {
+        computeActual("SELECT * FROM orders");
+    }
 }

@@ -22,6 +22,9 @@ import io.trino.sql.planner.SymbolAllocator;
 import io.trino.sql.planner.TypeProvider;
 import io.trino.sql.planner.plan.PlanNode;
 
+/**
+ * 查询优化器接口
+ */
 public interface PlanOptimizer
 {
     PlanNode optimize(

@@ -15,6 +15,7 @@ package io.trino.execution.resourcegroups;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import io.airlift.log.Logger;
 import io.airlift.stats.CounterStat;
 import io.trino.execution.ManagedQueryExecution;
 import io.trino.execution.resourcegroups.WeightedFairQueue.Usage;
@@ -77,6 +78,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class InternalResourceGroup
         implements ResourceGroup
 {
+    private static final Logger log = Logger.get(InternalResourceGroup.class);
+
     public static final int DEFAULT_WEIGHT = 1;
 
     private final InternalResourceGroup root;
@@ -624,6 +627,7 @@ public class InternalResourceGroup
     {
         checkState(Thread.holdsLock(root), "Must hold lock to enqueue a query");
         synchronized (root) {
+            log.info("<%s> enqueue query.", query.getBasicQueryInfo().getQueryId());
             queuedQueries.addOrUpdate(query, getQueryPriority(query.getSession()));
             InternalResourceGroup group = this;
             while (group.parent.isPresent()) {
@@ -660,6 +664,7 @@ public class InternalResourceGroup
     {
         checkState(Thread.holdsLock(root), "Must hold lock to start a query");
         synchronized (root) {
+            log.info("<%s> start to run query in background.", query.getBasicQueryInfo().getQueryId());
             runningQueries.put(query, new ResourceUsage(0, 0));
             InternalResourceGroup group = this;
             while (group.parent.isPresent()) {

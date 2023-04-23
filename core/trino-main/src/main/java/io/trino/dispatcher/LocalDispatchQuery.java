@@ -121,6 +121,7 @@ public class LocalDispatchQuery
             if (queryExecution.shouldWaitForMinWorkers()) {
                 executionMinCount = getRequiredWorkers(session);
             }
+            log.info("<%s> waiting for minimum workers %d", queryExecution.getQueryId(), executionMinCount);
             ListenableFuture<Void> minimumWorkerFuture = clusterSizeMonitor.waitForMinimumWorkers(executionMinCount, getRequiredWorkersMaxWait(session));
             // when worker requirement is met, start the execution
             addSuccessCallback(minimumWorkerFuture, () -> startExecution(queryExecution));
@@ -140,6 +141,7 @@ public class LocalDispatchQuery
         queryExecutor.execute(() -> {
             if (stateMachine.transitionToDispatching()) {
                 try {
+                    // 执行 SqlQueryManager#createQuery
                     querySubmitter.accept(queryExecution);
                     if (notificationSentOrGuaranteed.compareAndSet(false, true)) {
                         queryExecution.addFinalQueryInfoListener(queryMonitor::queryCompletedEvent);

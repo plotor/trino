@@ -62,13 +62,17 @@ public final class Session
     private final QueryId queryId;
     private final Optional<TransactionId> transactionId;
     private final boolean clientTransactionSupport;
+    // 当前会话所有者身份信息
     private final Identity identity;
+    // 当前会话来源，例如 trino-cli
     private final Optional<String> source;
+    // 当前会话所在的 catalog、schema 信息
     private final Optional<String> catalog;
     private final Optional<String> schema;
     private final SqlPath path;
     private final TimeZoneKey timeZoneKey;
     private final Locale locale;
+    // 远程请求地址信息
     private final Optional<String> remoteUserAddress;
     private final Optional<String> userAgent;
     private final Optional<String> clientInfo;
