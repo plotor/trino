@@ -144,7 +144,9 @@ public class LocalDispatchQueryFactory
         // QueryMonitor and EventListenerManager.
         queryMonitor.queryCreatedEvent(stateMachine.getBasicQueryInfo(Optional.empty()));
 
+        // 依据当前的 Query 类型是数据定义还是查询，生成对应的 QueryExecution 对象
         ListenableFuture<QueryExecution> queryExecutionFuture = executor.submit(() -> {
+            // 依据当前 Query 类型获取对应的 QueryExecutionFactory，QueryExecutionFactory 的实现依据是数据定义还是数据查询分为两种
             QueryExecutionFactory<?> queryExecutionFactory = executionFactories.get(preparedQuery.getStatement().getClass());
             if (queryExecutionFactory == null) {
                 throw new TrinoException(NOT_SUPPORTED, "Unsupported statement type: " + preparedQuery.getStatement().getClass().getSimpleName());

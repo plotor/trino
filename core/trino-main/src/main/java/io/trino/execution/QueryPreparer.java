@@ -99,9 +99,9 @@ public class QueryPreparer
 
     public static class PreparedQuery
     {
-        private final Statement statement;
-        private final List<Expression> parameters;
-        private final Optional<String> prepareSql;
+        private final Statement statement; // 抽象语法树
+        private final List<Expression> parameters; // SQL 参数
+        private final Optional<String> prepareSql; // SQL 模板
 
         public PreparedQuery(Statement statement, List<Expression> parameters, Optional<String> prepareSql)
         {

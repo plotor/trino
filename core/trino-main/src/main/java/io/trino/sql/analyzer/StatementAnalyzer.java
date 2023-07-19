@@ -387,6 +387,9 @@ import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
+/**
+ * 对 Statement 进行语义分析
+ */
 class StatementAnalyzer
 {
     private static final Set<String> WINDOW_VALUE_FUNCTIONS = ImmutableSet.of("lead", "lag", "first_value", "last_value", "nth_value");
@@ -2403,7 +2406,7 @@ class StatementAnalyzer
             analysis.unregisterTableForView();
 
             checkViewStaleness(columns, descriptor.getVisibleFields(), name, table)
-                    .ifPresent(explanation -> { throw semanticException(VIEW_IS_STALE, table, "View '%s' is stale or in invalid state: %s", name, explanation); });
+                    .ifPresent(explanation -> {throw semanticException(VIEW_IS_STALE, table, "View '%s' is stale or in invalid state: %s", name, explanation);});
 
             // Derive the type of the view from the stored definition, not from the analysis of the underlying query.
             // This is needed in case the underlying table(s) changed and the query in the view now produces types that
@@ -4718,8 +4721,8 @@ class StatementAnalyzer
             try {
                 Identity constraintIdentity = constraint.getSecurityIdentity()
                         .map(user -> Identity.forUser(user)
-                            .withGroups(groupProvider.getGroups(user))
-                            .build())
+                                .withGroups(groupProvider.getGroups(user))
+                                .build())
                         .orElseGet(session::getIdentity);
                 expressionAnalysis = ExpressionAnalyzer.analyzeExpression(
                         createViewSession(constraint.getCatalog(), constraint.getSchema(), constraintIdentity, session.getPath()),

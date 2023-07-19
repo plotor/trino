@@ -233,6 +233,7 @@ public final class InternalResourceGroupManager<C>
                 group = parent.getOrCreateSubGroup(id.getLastSegment());
             }
             else {
+                log.info("Create resource group %s", id);
                 InternalResourceGroup root = new InternalResourceGroup(id.getSegments().get(0), this::exportGroup, executor);
                 group = root;
                 rootGroups.add(root);

@@ -279,6 +279,14 @@ import static java.util.Collections.unmodifiableSet;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
+/**
+ * 对 SQL 中的表达式进行分析：
+ * - 获取表达式的类型
+ * - 获取需要进行类型转换的表达式及其转换的目的类型
+ * - 获取表达式中存在的函数信息
+ * - 获取表达式中所有合法的列名及对应列的编号
+ * - 获取表达式中 In 语句中的子查询
+ */
 public class ExpressionAnalyzer
 {
     private static final int MAX_NUMBER_GROUPING_ARGUMENTS_BIGINT = 63;

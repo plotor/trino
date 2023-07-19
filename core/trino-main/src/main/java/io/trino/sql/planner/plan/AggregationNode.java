@@ -346,9 +346,12 @@ public class AggregationNode
 
     public enum Step
     {
+        /* 局部聚合 */
         PARTIAL(true, true),
+        /* 最终聚合 */
         FINAL(false, false),
         INTERMEDIATE(false, true),
+        /* 单点聚合 */
         SINGLE(true, false);
 
         private final boolean inputRaw;

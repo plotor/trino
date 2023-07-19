@@ -209,7 +209,7 @@ public class DispatchManager
             // apply system default session properties (does not override user set properties)
             session = sessionPropertyDefaults.newSessionWithDefaultProperties(session, queryType, selectionContext.getResourceGroupId());
 
-            // 5. 生成 DispatchQuery，实现为 LocalDispatchQuery
+            // 5. 生成 DispatchQuery，实现为 LocalDispatchQuery，内部封装了对应的 QueryExecution 对象
             log.info("<%s> create dispatch query.", queryId);
             DispatchQuery dispatchQuery = dispatchQueryFactory.createDispatchQuery(
                     session,

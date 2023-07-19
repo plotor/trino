@@ -143,6 +143,7 @@ public class DataDefinitionExecution<T extends Statement>
                 return;
             }
 
+            // 对于 DDL 类型 Query 直接调用执行对应的 Task
             ListenableFuture<Void> future = task.execute(statement, stateMachine, parameters, warningCollector);
             Futures.addCallback(future, new FutureCallback<>()
             {
