@@ -56,6 +56,17 @@ public class AllNodes
     }
 
     @Override
+    public String toString()
+    {
+        return "activeNodes=%d, inactiveNodes=%d, shuttingDownNodes=%d, activeCoordinators=%d".formatted(
+                getActiveNodes().size(),
+                getInactiveNodes().size(),
+                getShuttingDownNodes().size(),
+                getActiveCoordinators().size()
+        );
+    }
+
+    @Override
     public boolean equals(Object o)
     {
         if (this == o) {

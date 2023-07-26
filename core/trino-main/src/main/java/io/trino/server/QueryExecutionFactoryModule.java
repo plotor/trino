@@ -122,13 +122,15 @@ public class QueryExecutionFactoryModule
     public void configure(Binder binder)
     {
         MapBinder<Class<? extends Statement>, QueryExecutionFactory<?>> executionBinder =
-                newMapBinder(binder, new TypeLiteral<Class<? extends Statement>>() {}, new TypeLiteral<QueryExecutionFactory<?>>() {});
+                newMapBinder(binder, new TypeLiteral<>() {}, new TypeLiteral<>() {});
 
+        // 初始化 SqlQueryExecutionFactory
         binder.bind(SqlQueryExecutionFactory.class).in(Scopes.SINGLETON);
         for (Class<? extends Statement> statement : getNonDataDefinitionStatements()) {
             executionBinder.addBinding(statement).to(SqlQueryExecutionFactory.class).in(Scopes.SINGLETON);
         }
 
+        // 初始化 DataDefinitionExecutionFactory，绑定 DDL 及其对应的 Task 实现
         binder.bind(DataDefinitionExecutionFactory.class).in(Scopes.SINGLETON);
         bindDataDefinitionTask(binder, executionBinder, AddColumn.class, AddColumnTask.class);
         bindDataDefinitionTask(binder, executionBinder, Call.class, CallTask.class);

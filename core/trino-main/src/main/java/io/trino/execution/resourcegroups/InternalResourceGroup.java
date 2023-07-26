@@ -673,6 +673,7 @@ public class InternalResourceGroup
                 group = group.parent.get();
             }
             updateEligibility();
+            // 等待集群 Worker 节点数满足要求后开始执行 Query
             executor.execute(query::startWaitingForResources);
         }
     }

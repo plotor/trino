@@ -313,7 +313,7 @@ public class QueryStateMachine
                 queryType,
                 version);
         queryStateMachine.addStateChangeListener(newState -> {
-            QUERY_STATE_LOG.debug("Query %s is %s", queryStateMachine.getQueryId(), newState);
+            QUERY_STATE_LOG.info("Query %s state is %s", queryStateMachine.getQueryId(), newState);
             if (newState.isDone()) {
                 queryStateMachine.getSession().getTransactionId().ifPresent(transactionManager::trySetInactive);
                 queryStateMachine.getOutputManager().setQueryCompleted();

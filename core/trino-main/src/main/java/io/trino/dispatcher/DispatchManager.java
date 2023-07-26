@@ -197,19 +197,20 @@ public class DispatchManager
             // 4. 选择对应的资源组
             Optional<String> queryType = getQueryType(preparedQuery.getStatement()).map(Enum::name);
             log.info("<%s> select resource group for query, type: %s", queryId, queryType.orElse(null));
-            SelectionContext<C> selectionContext = resourceGroupManager.selectGroup(new SelectionCriteria(
-                    sessionContext.getIdentity().getPrincipal().isPresent(),
-                    sessionContext.getIdentity().getUser(),
-                    sessionContext.getIdentity().getGroups(),
-                    sessionContext.getSource(),
-                    sessionContext.getClientTags(),
-                    sessionContext.getResourceEstimates(),
-                    queryType));
+            SelectionContext<C> selectionContext = resourceGroupManager
+                    .selectGroup(new SelectionCriteria(
+                            sessionContext.getIdentity().getPrincipal().isPresent(),
+                            sessionContext.getIdentity().getUser(),
+                            sessionContext.getIdentity().getGroups(),
+                            sessionContext.getSource(),
+                            sessionContext.getClientTags(),
+                            sessionContext.getResourceEstimates(),
+                            queryType));
 
             // apply system default session properties (does not override user set properties)
             session = sessionPropertyDefaults.newSessionWithDefaultProperties(session, queryType, selectionContext.getResourceGroupId());
 
-            // 5. 生成 DispatchQuery，实现为 LocalDispatchQuery，内部封装了对应的 QueryExecution 对象
+            // 5. 构造 DispatchQuery，内部封装了 Query 对应的状态机和 QueryExecution 对象
             log.info("<%s> create dispatch query.", queryId);
             DispatchQuery dispatchQuery = dispatchQueryFactory.createDispatchQuery(
                     session,

@@ -54,6 +54,7 @@ public class LocalDispatchQuery
 {
     private static final Logger log = Logger.get(LocalDispatchQuery.class);
     private final QueryStateMachine stateMachine;
+    // 异步构造当前 Query 对应的 QueryExecution 对象
     private final ListenableFuture<QueryExecution> queryExecutionFuture;
 
     private final QueryMonitor queryMonitor;
@@ -115,25 +116,28 @@ public class LocalDispatchQuery
     private void waitForMinimumWorkers()
     {
         // wait for query execution to finish construction
-        addSuccessCallback(queryExecutionFuture, queryExecution -> {
-            Session session = stateMachine.getSession();
-            int executionMinCount = 1; // always wait for 1 node to be up
-            if (queryExecution.shouldWaitForMinWorkers()) {
-                executionMinCount = getRequiredWorkers(session);
-            }
-            log.info("<%s> waiting for minimum workers %d", queryExecution.getQueryId(), executionMinCount);
-            ListenableFuture<Void> minimumWorkerFuture = clusterSizeMonitor.waitForMinimumWorkers(executionMinCount, getRequiredWorkersMaxWait(session));
-            // when worker requirement is met, start the execution
-            addSuccessCallback(minimumWorkerFuture, () -> startExecution(queryExecution));
-            addExceptionCallback(minimumWorkerFuture, throwable -> queryExecutor.execute(() -> stateMachine.transitionToFailed(throwable)));
+        addSuccessCallback(
+                queryExecutionFuture, // 等待前置构造当前 Query 对应的 QueryExecution 对象完成，然后执行 callback
+                queryExecution -> {
+                    Session session = stateMachine.getSession();
+                    int executionMinCount = 1; // always wait for 1 node to be up
+                    if (queryExecution.shouldWaitForMinWorkers()) {
+                        executionMinCount = getRequiredWorkers(session);
+                    }
+                    log.info("<%s> waiting for minimum workers %d", queryExecution.getQueryId(), executionMinCount);
+                    // 等待集群 Worker 节点数量满足要求
+                    ListenableFuture<Void> minimumWorkerFuture = clusterSizeMonitor.waitForMinimumWorkers(executionMinCount, getRequiredWorkersMaxWait(session));
+                    // when worker requirement is met, start the execution
+                    addSuccessCallback(minimumWorkerFuture, () -> startExecution(queryExecution));
+                    addExceptionCallback(minimumWorkerFuture, throwable -> queryExecutor.execute(() -> stateMachine.transitionToFailed(throwable)));
 
-            // cancel minimumWorkerFuture if query fails for some reason or is cancelled by user
-            stateMachine.addStateChangeListener(state -> {
-                if (state.isDone()) {
-                    minimumWorkerFuture.cancel(true);
-                }
-            });
-        });
+                    // cancel minimumWorkerFuture if query fails for some reason or is cancelled by user
+                    stateMachine.addStateChangeListener(state -> {
+                        if (state.isDone()) {
+                            minimumWorkerFuture.cancel(true);
+                        }
+                    });
+                });
     }
 
     private void startExecution(QueryExecution queryExecution)

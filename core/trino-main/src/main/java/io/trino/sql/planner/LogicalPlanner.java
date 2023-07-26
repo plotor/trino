@@ -253,7 +253,7 @@ public class LogicalPlanner
 
         if (stage.ordinal() >= OPTIMIZED.ordinal()) {
             for (PlanOptimizer optimizer : planOptimizers) {
-                LOG.info("Optimize plan by optimizer %s", optimizer.getClass().getName());
+                LOG.info("Optimize plan by optimizer %s", optimizer.getClass().getSimpleName());
                 root = optimizer.optimize(root, session, symbolAllocator.getTypes(), symbolAllocator,
                         idAllocator, warningCollector, planOptimizersStatsCollector, tableStatsProvider);
                 if (root == null) {

@@ -211,7 +211,8 @@ public final class DiscoveryNodeManager
     private synchronized void refreshNodesInternal()
     {
         // This is a deny-list.
-        Set<ServiceDescriptor> services = serviceSelector.selectAllServices().stream()
+        Set<ServiceDescriptor> services = serviceSelector.selectAllServices()
+                .stream()
                 .filter(service -> !failureDetector.getFailed().contains(service))
                 .collect(toImmutableSet());
 
@@ -274,6 +275,7 @@ public final class DiscoveryNodeManager
         }
 
         AllNodes allNodes = new AllNodes(activeNodesBuilder.build(), inactiveNodesBuilder.build(), shuttingDownNodesBuilder.build(), coordinatorsBuilder.build());
+        log.info("Refresh cluster nodes, %s", allNodes);
         // only update if all nodes actually changed (note: this does not include the connectors registered with the nodes)
         if (!allNodes.equals(this.allNodes)) {
             // assign allNodes to a local variable for use in the callback below
