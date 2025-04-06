@@ -52,7 +52,13 @@ public class ExchangeNode
 
     public enum Scope
     {
+        /**
+         * 任务内部的数据交换
+         */
         LOCAL,
+        /**
+         * 任务之间的数据交换
+         */
         REMOTE
     }
 

@@ -15,6 +15,9 @@ package io.trino.execution.scheduler;
 
 import java.io.Closeable;
 
+/**
+ * StageScheduler 的职责是绑定查询执行节点与上游数据源分片的关系，创建 Task 并调度到查询执行节点上
+ */
 public interface StageScheduler
         extends Closeable
 {

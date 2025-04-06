@@ -239,25 +239,26 @@ public class LogicalPlanner
     public Plan plan(Analysis analysis, Stage stage, boolean collectPlanStatistics)
     {
         PlanNode root;
+        // 基于语义解析后的 Statement 构造 LogicalPlan
         try (var ignored = scopedSpan(plannerContext.getTracer(), "plan")) {
             root = planStatement(analysis, analysis.getStatement());
         }
 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Initial plan:\n%s", PlanPrinter.textLogicalPlan(
-                    root,
-                    metadata,
-                    plannerContext.getFunctionManager(),
-                    StatsAndCosts.empty(),
-                    session,
-                    0,
-                    false));
-        }
+        LOG.info("Initial LogicalPlan:\n%s", PlanPrinter.textLogicalPlan(
+                root,
+                metadata,
+                plannerContext.getFunctionManager(),
+                StatsAndCosts.empty(),
+                session,
+                0,
+                false));
 
+        // 对 LogicalPlan 执行简单校验，确保其正确性
         try (var ignored = scopedSpan(plannerContext.getTracer(), "validate-intermediate")) {
             planSanityChecker.validateIntermediatePlan(root, session, plannerContext, warningCollector);
         }
 
+        // 对 LogicalPlan 基于优化器进行优化得到 Optimized LogicalPlan
         if (stage.ordinal() >= OPTIMIZED.ordinal()) {
             try (var ignored = scopedSpan(plannerContext.getTracer(), "optimizer")) {
                 for (PlanOptimizer optimizer : planOptimizers) {
@@ -266,6 +267,7 @@ public class LogicalPlanner
             }
         }
 
+        // 对 Optimized LogicalPlan 执行最终校验，确保其正确性
         if (stage.ordinal() >= OPTIMIZED_AND_VALIDATED.ordinal()) {
             // make sure we produce a valid plan after optimizations run. This is mainly to catch programming errors
             try (var ignored = scopedSpan(plannerContext.getTracer(), "validate-final")) {
@@ -273,6 +275,16 @@ public class LogicalPlanner
             }
         }
 
+        LOG.info("Optimized LogicalPlan:\n%s", PlanPrinter.textLogicalPlan(
+                root,
+                metadata,
+                plannerContext.getFunctionManager(),
+                StatsAndCosts.empty(),
+                session,
+                0,
+                false));
+
+        // 用于获取 Query 关联的每个表的统计信息
         TableStatsProvider collectTableStatsProvider;
         if (collectPlanStatistics) {
             collectTableStatsProvider = tableStatsProvider;
@@ -284,6 +296,7 @@ public class LogicalPlanner
             collectTableStatsProvider = handle -> cachedStatistics.getOrDefault(handle, TableStatistics.empty());
         }
 
+        // 统计执行成本
         StatsAndCosts statsAndCosts;
         StatsProvider statsProvider = new CachingStatsProvider(statsCalculator, session, collectTableStatsProvider);
         CostProvider costProvider = new CachingCostProvider(costCalculator, statsProvider, Optional.empty(), session);

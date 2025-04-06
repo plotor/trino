@@ -449,7 +449,9 @@ public class PlanPrinter
         TableInfoSupplier tableInfoSupplier = new TableInfoSupplier(metadata, session);
         ValuePrinter valuePrinter = new ValuePrinter(metadata, functionManager, session);
         StringBuilder builder = new StringBuilder();
-        builder.append(format("Trino version: %s\n", version));
+        if (null != version) {
+            builder.append(format("Trino version: %s\n", version));
+        }
         for (PlanFragment fragment : plan.getAllFragments()) {
             builder.append(formatFragment(
                     tableInfoSupplier,

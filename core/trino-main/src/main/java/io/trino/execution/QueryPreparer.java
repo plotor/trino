@@ -51,6 +51,7 @@ public class QueryPreparer
     public PreparedQuery prepareQuery(Session session, String query)
             throws ParsingException, TrinoException
     {
+        // 基于 Antlr 解析 SQL 语句得到 AST
         Statement wrappedStatement = sqlParser.createStatement(query);
         return prepareQuery(session, wrappedStatement);
     }

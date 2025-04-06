@@ -120,8 +120,10 @@ public class LocalDispatchQuery
         // wait for query execution to finish construction
         addSuccessCallback(queryExecutionFuture, queryExecution -> {
             Session session = stateMachine.getSession();
+            // 计算需要的最小 Worker 数
             int executionMinCount = 1; // always wait for 1 node to be up
             if (queryExecution.shouldWaitForMinWorkers()) {
+                // 对于查询类的 SQL 而言
                 executionMinCount = getRequiredWorkers(session);
             }
             ListenableFuture<Void> minimumWorkerFuture = clusterSizeMonitor.waitForMinimumWorkers(executionMinCount, getRequiredWorkersMaxWait(session));
@@ -140,8 +142,10 @@ public class LocalDispatchQuery
 
     private void startExecution(QueryExecution queryExecution)
     {
+        // 切换 Query 执行状态为 DISPATCHING
         if (stateMachine.transitionToDispatching()) {
             try {
+                // 执行 SqlQueryManager.createQuery
                 querySubmitter.accept(queryExecution);
                 if (notificationSentOrGuaranteed.compareAndSet(false, true)) {
                     queryExecution.addFinalQueryInfoListener(queryMonitor::queryCompletedEvent);

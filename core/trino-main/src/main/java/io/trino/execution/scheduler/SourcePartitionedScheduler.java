@@ -244,6 +244,7 @@ public class SourcePartitionedScheduler
         else if (pendingSplits.isEmpty()) {
             // try to get the next batch
             if (nextSplitBatchFuture == null) {
+                // 获取一次 Split
                 nextSplitBatchFuture = splitSource.getNextBatch(splitBatchSize);
 
                 long start = System.nanoTime();
@@ -288,7 +289,7 @@ public class SourcePartitionedScheduler
                 blockedOnPlacements = true;
             }
             else {
-                // calculate placements for splits
+                // calculate placements for splits，为 Split 选择对应的节点
                 SplitPlacementResult splitPlacementResult = splitPlacementPolicy.computeAssignments(pendingSplits);
                 splitAssignment = splitPlacementResult.getAssignments(); // remove splits with successful placements
                 splitAssignment.values().forEach(pendingSplits::remove); // AbstractSet.removeAll performs terribly here.

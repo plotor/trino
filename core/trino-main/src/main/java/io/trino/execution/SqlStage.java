@@ -99,6 +99,7 @@ public final class SqlStage
         requireNonNull(tracer, "tracer is null");
         requireNonNull(schedulerStats, "schedulerStats is null");
 
+        // 创建 Stage 对应的状态机，初始状态为 PLANNED
         StageStateMachine stateMachine = new StageStateMachine(
                 stageId,
                 fragment,
@@ -108,12 +109,14 @@ public final class SqlStage
                 schedulerSpan,
                 schedulerStats);
 
+        // 创建 Fragment 对应的 SqlStage 对象
         SqlStage sqlStage = new SqlStage(
                 session,
                 stateMachine,
                 remoteTaskFactory,
                 nodeTaskMap,
                 summarizeTaskInfo);
+        // 注册状态监听器
         sqlStage.initialize();
         return sqlStage;
     }
@@ -131,6 +134,7 @@ public final class SqlStage
         this.nodeTaskMap = requireNonNull(nodeTaskMap, "nodeTaskMap is null");
         this.summarizeTaskInfo = summarizeTaskInfo;
 
+        // 启用将收集到的 Dynamic Filters 下发给所有的 Worker 节点
         if (isEnableCoordinatorDynamicFiltersDistribution(session)) {
             this.outboundDynamicFilterIds = getOutboundDynamicFilters(stateMachine.getFragment());
         }

@@ -20,7 +20,10 @@ import static java.util.Objects.requireNonNull;
 
 public class Plan
 {
+    // Plan 的根节点
     private final PlanNode root;
+
+    // Plan 对应的统计信息
     private final StatsAndCosts statsAndCosts;
 
     public Plan(PlanNode root, StatsAndCosts statsAndCosts)

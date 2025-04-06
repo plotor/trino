@@ -75,16 +75,25 @@ class StageManager
             boolean summarizeTaskInfo)
     {
         Session session = queryStateMachine.getSession();
+        // 建立 StageId 和 SqlStage 的映射关系
         ImmutableMap.Builder<StageId, SqlStage> stages = ImmutableMap.builder();
+        // 按照 Fragment 数广度优先搜索顺序记录对应的 SqlStage 对象
         ImmutableList.Builder<SqlStage> stagesInTopologicalOrder = ImmutableList.builder();
+        // 记录仅需要在 Coordinator 节点上执行的 SqlStage 对象
         ImmutableList.Builder<SqlStage> coordinatorStagesInTopologicalOrder = ImmutableList.builder();
+        // 记录需要在 Worker 节点上执行的 SqlStage 对象
         ImmutableList.Builder<SqlStage> distributedStagesInTopologicalOrder = ImmutableList.builder();
         StageId rootStageId = null;
+        // 记录每个 Stage 与所有子 Stage 的映射关系，一个 Stage 可以有多个子 Stage
         ImmutableMap.Builder<StageId, Set<StageId>> children = ImmutableMap.builder();
+        // 记录每个 Stage 与父 Stage 的映射关系，一个 Stage 只能有一个父 Stage
         ImmutableMap.Builder<StageId, StageId> parents = ImmutableMap.builder();
+        // 对 Fragment 数执行广度优先遍历，将每个 Fragment 转换为 SqlStage 对象，并建立相关映射关系
         for (SubPlan planNode : Traverser.forTree(SubPlan::getChildren).breadthFirst(planTree)) {
             PlanFragment fragment = planNode.getFragment();
+            // 为每个 Fragment 创建一个 SqlStage 对象
             SqlStage stage = createSqlStage(
+                    // 基于 QueryId 和 PlanFragmentId 生成 StageId
                     getStageId(session.getQueryId(), fragment.getId()),
                     fragment,
                     TableInfo.extract(session, metadata, fragment),
@@ -114,6 +123,8 @@ class StageManager
             children.put(stageId, childStageIds);
             childStageIds.forEach(child -> parents.put(child, stageId));
         }
+
+        // 构建 StageManager 对象，其中包含各个 Fragment 对应的 SqlStage 对象，以及 Stage 之间的依赖关系
         StageManager stageManager = new StageManager(
                 queryStateMachine,
                 stages.buildOrThrow(),
@@ -123,6 +134,7 @@ class StageManager
                 rootStageId,
                 children.buildOrThrow(),
                 parents.buildOrThrow());
+        // 为每个 SqlStage 对象注册状态监听器
         stageManager.initialize();
         return stageManager;
     }

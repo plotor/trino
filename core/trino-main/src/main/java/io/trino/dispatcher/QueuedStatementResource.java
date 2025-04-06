@@ -167,11 +167,18 @@ public class QueuedStatementResource
             throw badRequest(BAD_REQUEST, "SQL statement is empty");
         }
 
+        log.info("Received statement: %s", statement);
+
+        // 为当前 statement 构造 SessionContext 上下文对象和 Query 对象，并注册到 QueryManager 中
         Query query = registerQuery(statement, servletRequest, httpHeaders);
 
+        // 构造 Response 对象响应客户端
         return createQueryResultsResponse(query.getQueryResults(query.getLastToken(), uriInfo));
     }
 
+    /**
+     * 为当前 statement 构造 SessionContext 上下文对象和 Query 对象，并注册到 QueryManager 中
+     */
     private Query registerQuery(String statement, HttpServletRequest servletRequest, HttpHeaders httpHeaders)
     {
         Optional<String> remoteAddress = Optional.ofNullable(servletRequest.getRemoteAddr());
@@ -182,8 +189,10 @@ public class QueuedStatementResource
 
         MultivaluedMap<String, String> headers = httpHeaders.getRequestHeaders();
 
+        // 为当前 statement 构造 SessionContext 上下文对象和 Query 对象
         SessionContext sessionContext = sessionContextFactory.createSessionContext(headers, remoteAddress, identity);
         Query query = new Query(statement, sessionContext, dispatchManager, queryInfoUrlFactory, tracer);
+        // 注册到 QueryManager 中
         queryManager.registerQuery(query);
 
         // let authentication filter know that identity lifecycle has been handed off
@@ -204,17 +213,22 @@ public class QueuedStatementResource
             @Context UriInfo uriInfo,
             @Suspended AsyncResponse asyncResponse)
     {
+        // 从 QueryManager 中按照 QueryId 获取 Query 对象
         Query query = getQuery(queryId, slug, token);
 
+        // 超时获取 Query 的状态，并响应客户端
         ListenableFuture<Response> future = getStatus(query, token, maxWait, uriInfo);
         bindAsyncResponse(asyncResponse, future, responseExecutor);
     }
 
     private ListenableFuture<Response> getStatus(Query query, long token, Duration maxWait, UriInfo uriInfo)
     {
+        // 等待超时时间，默认为 1s
         long waitMillis = WAIT_ORDERING.min(MAX_WAIT_TIME, maxWait).toMillis();
 
-        return FluentFuture.from(query.waitForDispatched())
+        return FluentFuture
+                // 超时等待 Query 被封装成 DispatchQuery 对象，并提交给资源组执行
+                .from(query.waitForDispatched())
                 // wait for query to be dispatched, up to the wait timeout
                 .withTimeout(waitMillis, MILLISECONDS, timeoutExecutor)
                 .catching(TimeoutException.class, ignored -> null, directExecutor())
@@ -319,6 +333,12 @@ public class QueuedStatementResource
 
         private final long initTime = System.nanoTime();
         private final AtomicReference<Boolean> submissionGate = new AtomicReference<>();
+        /**
+         * 当完成如下步骤时，该 Future 被标识为执行完成：
+         * 1. Query 被成功解析成 AST。
+         * 2. 封装成 DispatchQuery 注册到 QueryTracer 中。
+         * 3. 提交给对应的资源组执行。
+         */
         private final SettableFuture<Void> creationFuture = SettableFuture.create();
 
         public Query(String query, SessionContext sessionContext, DispatchManager dispatchManager, QueryInfoUrlFactory queryInfoUrlFactory, Tracer tracer)
@@ -326,6 +346,7 @@ public class QueuedStatementResource
             this.query = requireNonNull(query, "query is null");
             this.sessionContext = requireNonNull(sessionContext, "sessionContext is null");
             this.dispatchManager = requireNonNull(dispatchManager, "dispatchManager is null");
+            // 分配 QueryId
             this.queryId = dispatchManager.createQueryId();
             requireNonNull(queryInfoUrlFactory, "queryInfoUrlFactory is null");
             this.queryInfoUrl = queryInfoUrlFactory.getQueryInfoUrl(queryId);
@@ -367,6 +388,7 @@ public class QueuedStatementResource
 
         private ListenableFuture<Void> waitForDispatched()
         {
+            // 对于新的 Query 则尝试提交执行
             submitIfNeeded();
             if (!creationFuture.isDone()) {
                 return nonCancellationPropagating(creationFuture);

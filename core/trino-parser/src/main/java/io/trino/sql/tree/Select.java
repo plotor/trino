@@ -26,6 +26,7 @@ public class Select
         extends Node
 {
     private final boolean distinct;
+    // Select 筛选的列
     private final List<SelectItem> selectItems;
 
     public Select(boolean distinct, List<SelectItem> selectItems)

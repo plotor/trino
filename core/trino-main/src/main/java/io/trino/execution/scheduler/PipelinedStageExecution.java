@@ -141,6 +141,7 @@ public class PipelinedStageExecution
             int attempt)
     {
         PipelinedStageStateMachine stateMachine = new PipelinedStageStateMachine(stage.getStageId(), executor);
+        // 获取当前 Stage 的数据上游 ExchangeNode，一个 Stage 可能会有多个上游输入，例如 Join
         ImmutableMap.Builder<PlanFragmentId, RemoteSourceNode> exchangeSources = ImmutableMap.builder();
         for (RemoteSourceNode remoteSourceNode : stage.getFragment().getRemoteSourceNodes()) {
             for (PlanFragmentId planFragmentId : remoteSourceNode.getSourceFragmentIds()) {

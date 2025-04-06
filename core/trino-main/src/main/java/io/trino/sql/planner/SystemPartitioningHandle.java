@@ -38,10 +38,20 @@ public final class SystemPartitioningHandle
 {
     enum SystemPartitioning
     {
+        // 用于聚合子 Stage 数据，并最终将数据输出给终端用户，Single Stage 没有下游 Stage
         SINGLE,
+        /*
+         * 固定数量分区，按预定规则分布数据，例如：
+         * - 哈希分区（eg. GROUP BY）
+         * - 轮询分区
+         * - 广播分区（复制到所有节点）
+         */
         FIXED,
+        // 数据源分区策略，Source Stage 没有上游 Stage
         SOURCE,
+        // 仅在 CN 节点执行（如 DDL、DML）
         COORDINATOR_ONLY,
+        // 动态弹性分区
         ARBITRARY
     }
 

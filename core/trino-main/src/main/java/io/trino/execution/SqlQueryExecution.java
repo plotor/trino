@@ -18,6 +18,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.errorprone.annotations.ThreadSafe;
 import com.google.inject.Inject;
 import io.airlift.concurrent.SetThreadName;
+import io.airlift.log.Logger;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import io.opentelemetry.api.trace.Span;
@@ -74,6 +75,7 @@ import io.trino.sql.planner.SubPlan;
 import io.trino.sql.planner.optimizations.AdaptivePlanOptimizer;
 import io.trino.sql.planner.optimizations.PlanOptimizer;
 import io.trino.sql.planner.plan.OutputNode;
+import io.trino.sql.planner.planprinter.PlanPrinter;
 import io.trino.sql.tree.ExplainAnalyze;
 import io.trino.sql.tree.Query;
 import io.trino.sql.tree.Statement;
@@ -110,6 +112,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 public class SqlQueryExecution
         implements QueryExecution
 {
+    private static final Logger LOG = Logger.get(SqlQueryExecution.class);
+
     private final QueryStateMachine stateMachine;
     private final Slug slug;
     private final Tracer tracer;
@@ -394,11 +398,13 @@ public class SqlQueryExecution
     {
         try (SetThreadName ignored = new SetThreadName("Query-%s", stateMachine.getQueryId())) {
             try {
+                // 将 Query 执行状态切换成 PLANNING
                 if (!stateMachine.transitionToPlanning()) {
                     // query already started or finished
                     return;
                 }
 
+                // 注册状态监听器，监听 PLAN 失败的消息
                 AtomicReference<Thread> planningThread = new AtomicReference<>(currentThread());
                 stateMachine.getStateChange(PLANNING).addListener(() -> {
                     if (stateMachine.getQueryState() == FAILED) {
@@ -413,10 +419,21 @@ public class SqlQueryExecution
 
                 try {
                     CachingTableStatsProvider tableStatsProvider = new CachingTableStatsProvider(plannerContext.getMetadata(), getSession());
+                    /*
+                     * 1. 基于语法解析后的 AST 构造 LogicalPlan
+                     * 2. 对 LogicalPlan 应用优化规则（RBO + CBO）得到 Optimized LogicalPlan
+                     * 3. 基于 SimplePlanRewriter 将 Optimized LogicalPlan 按照依赖关系拆分成多个 Fragment
+                     */
                     PlanRoot plan = planQuery(tableStatsProvider);
                     // DynamicFilterService needs plan for query to be registered.
                     // Query should be registered before dynamic filter suppliers are requested in distribution planning.
+                    // 将 Query 对应的 Plan 注册给 DynamicFilterService
                     registerDynamicFilteringQuery(plan);
+                    /*
+                     * 基于容错策略配置创建调度器，默认采用 PipelinedQueryScheduler，期间：
+                     * 1. 对 Fragment 树执行广度优先遍历，并为每个 Fragment 创建对应的 Stage 对象，并由 StageManger 管理
+                     * 2. 为需要运行在 CN 节点上的 Stage 构造 StageExecution 对象，并由 CoordinatorStagesScheduler 管理
+                     */
                     planDistribution(plan, tableStatsProvider);
                 }
                 finally {
@@ -430,6 +447,7 @@ public class SqlQueryExecution
 
                 tableExecuteContextManager.registerTableExecuteContextForQuery(getQueryId());
 
+                // 将 Query 状态切换成 STARTING
                 if (!stateMachine.transitionToStarting()) {
                     // query already started or finished
                     return;
@@ -439,6 +457,10 @@ public class SqlQueryExecution
                 QueryScheduler scheduler = queryScheduler.get();
 
                 if (!stateMachine.isDone()) {
+                    /*
+                     * 1. 创建 DistributedStagesScheduler，期间会为每个 Stage 创建对应的 StageExecution 和 StageScheduler
+                     * 2. 依据执行计划将 Task 调度到对应的执行节点上
+                     */
                     scheduler.start();
                 }
             }
@@ -495,14 +517,24 @@ public class SqlQueryExecution
                 stateMachine.getWarningCollector(),
                 planOptimizersStatsCollector,
                 tableStatsProvider);
+        // 基于 LogicalPlanner 基于语法解析后的 AST 构造 LogicalPlan，
+        // 并应用优化规则得到 Optimized LogicalPlan
         Plan plan = logicalPlanner.plan(analysis);
         queryPlan.set(plan);
 
-        // fragment the plan
+        // fragment the plan，基于 SimplePlanRewriter 将 Optimized LogicalPlan 按照依赖关系拆分成多个 Fragment
         SubPlan fragmentedPlan;
         try (var ignored = scopedSpan(tracer, "fragment-plan")) {
             fragmentedPlan = planFragmenter.createSubPlans(stateMachine.getSession(), plan, false, stateMachine.getWarningCollector());
         }
+
+        LOG.info("FragmentedPlan:\n%s", PlanPrinter.textDistributedPlan(
+                fragmentedPlan,
+                plannerContext.getMetadata(),
+                plannerContext.getFunctionManager(),
+                getSession(),
+                false,
+                null));
 
         // extract inputs
         try (var ignored = scopedSpan(tracer, "extract-inputs")) {
@@ -515,6 +547,11 @@ public class SqlQueryExecution
         return new PlanRoot(fragmentedPlan, !explainAnalyze);
     }
 
+    /**
+     * 基于容错策略配置创建调度器，默认采用 PipelinedQueryScheduler，期间：
+     * 1. 对 Fragment 树执行广度优先遍历，并为每个 Fragment 创建对应的 Stage 对象，并由 StageManger 管理
+     * 2. 为需要运行在 CN 节点上的 Stage 构造 StageExecution 对象，并由 CoordinatorStagesScheduler 管理
+     */
     private void planDistribution(PlanRoot plan, CachingTableStatsProvider tableStatsProvider)
     {
         // if query was canceled, skip creating scheduler
@@ -522,14 +559,16 @@ public class SqlQueryExecution
             return;
         }
 
-        // record output field
+        // record output field，获取所有的输出列，并记录到状态机
         PlanFragment rootFragment = plan.getRoot().getFragment();
         stateMachine.setColumns(
                 ((OutputNode) rootFragment.getRoot()).getColumnNames(),
                 rootFragment.getTypes());
 
+        // 获取容错策略，对应 retry_policy 配置项，默认为不开启，为 NONE
         RetryPolicy retryPolicy = getRetryPolicy(getSession());
         QueryScheduler scheduler = switch (retryPolicy) {
+            // 默认使用 PipelinedQueryScheduler 调度器
             case QUERY, NONE -> new PipelinedQueryScheduler(
                     stateMachine,
                     plan.getRoot(),

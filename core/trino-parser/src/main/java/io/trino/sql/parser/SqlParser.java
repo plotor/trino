@@ -128,8 +128,11 @@ public class SqlParser
     private Node invokeParser(String name, String sql, Optional<NodeLocation> location, Function<SqlBaseParser, ParserRuleContext> parseFunction)
     {
         try {
+            // 构造词法解析器
             SqlBaseLexer lexer = new SqlBaseLexer(CharStreams.fromString(sql));
+            // 词法符号缓冲区，用于存储词法分析器生成的词法符号
             CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+            // 构造语法解析器
             SqlBaseParser parser = new SqlBaseParser(tokenStream);
             initializer.accept(lexer, parser);
 
@@ -161,6 +164,7 @@ public class SqlParser
                 try {
                     // first, try parsing with potentially faster SLL mode
                     parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
+                    // 应用语法规则构造 AST
                     tree = parseFunction.apply(parser);
                 }
                 catch (ParsingException ex) {

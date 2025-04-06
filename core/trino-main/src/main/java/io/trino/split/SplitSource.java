@@ -28,6 +28,9 @@ public interface SplitSource
 {
     CatalogHandle getCatalogHandle();
 
+    /**
+     * 返回一批 Split
+     */
     ListenableFuture<SplitBatch> getNextBatch(int maxSize);
 
     @Override

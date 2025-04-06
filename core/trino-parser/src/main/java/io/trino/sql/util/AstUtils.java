@@ -31,6 +31,33 @@ import static java.util.Objects.requireNonNull;
 
 public final class AstUtils
 {
+    public static String printTree(Node root)
+    {
+        StringBuilder sb = new StringBuilder();
+        printNode(root, "", true, sb, 0);
+        return sb.toString();
+    }
+
+    private static void printNode(Node node, String indent, boolean isLast, StringBuilder sb, int depth)
+    {
+        // 生成当前节点前缀
+        sb.append(indent)
+                .append(depth == 0 ? "" : isLast ? "└── " : "├── ")
+                .append(node.getClass().getSimpleName())
+                .append(": ")
+                .append(node.toString().split("@")[0]) // 简化输出
+                .append("\n");
+
+        // 准备子节点缩进
+        String childIndent = indent + (depth == 0 ? "" : isLast ? "    " : "│   ");
+
+        List<? extends Node> children = node.getChildren();
+        for (int i = 0; i < children.size(); i++) {
+            boolean lastChild = (i == children.size() - 1);
+            printNode(children.get(i), childIndent, lastChild, sb, depth + 1);
+        }
+    }
+
     public static Stream<Node> preOrder(Node node)
     {
         return stream(

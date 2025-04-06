@@ -107,7 +107,7 @@ public class SplitSourceFactory
         ImmutableList.Builder<SplitSource> allSplitSources = ImmutableList.builder();
         try {
             // get splits for this fragment, this is lazy so split assignments aren't actually calculated here
-            return fragment.getRoot().accept(
+            return fragment.getRoot().accept( // 主要处理 TableScanNode 节点
                     new Visitor(session, stageSpan, allSplitSources),
                     null);
         }

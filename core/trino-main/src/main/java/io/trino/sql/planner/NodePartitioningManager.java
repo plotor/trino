@@ -155,15 +155,18 @@ public class NodePartitioningManager
         requireNonNull(session, "session is null");
         requireNonNull(partitioningHandle, "partitioningHandle is null");
 
+        // 处理 SINGLE/FIXED/COORDINATOR_ONLY 系统预定义分区策略
         if (partitioningHandle.getConnectorHandle() instanceof SystemPartitioningHandle) {
             return systemNodePartitionMap(session, partitioningHandle, systemPartitioningCache, partitionCount);
         }
 
+        // 分区合并
         if (partitioningHandle.getConnectorHandle() instanceof MergePartitioningHandle mergeHandle) {
             return mergeHandle.getNodePartitioningMap(handle ->
                     getNodePartitioningMap(session, handle, bucketToNodeCache, systemPartitioningCache, partitionCount));
         }
 
+        // 获取连接器定义的分桶节点映射（如 Hive 表预定义的分区）
         Optional<ConnectorBucketNodeMap> optionalMap = getConnectorBucketNodeMap(session, partitioningHandle);
         if (optionalMap.isEmpty()) {
             return systemNodePartitionMap(session, FIXED_HASH_DISTRIBUTION, systemPartitioningCache, partitionCount);
@@ -173,6 +176,7 @@ public class NodePartitioningManager
         // safety check for crazy partitioning
         checkArgument(connectorBucketNodeMap.getBucketCount() < 1_000_000, "Too many buckets in partitioning: %s", connectorBucketNodeMap.getBucketCount());
 
+        // 计算 bucket 到 node 的映射
         List<InternalNode> bucketToNode;
         if (connectorBucketNodeMap.hasFixedMapping()) {
             bucketToNode = getFixedMapping(connectorBucketNodeMap);
@@ -184,6 +188,7 @@ public class NodePartitioningManager
                     bucketCount -> createArbitraryBucketToNode(getAllNodes(session, catalogHandle), bucketCount));
         }
 
+        // 构建分桶到分区的映射
         int[] bucketToPartition = new int[connectorBucketNodeMap.getBucketCount()];
         BiMap<InternalNode, Integer> nodeToPartition = HashBiMap.create();
         int nextPartitionId = 0;

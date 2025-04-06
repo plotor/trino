@@ -18,6 +18,9 @@ import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * AST 抽象节点
+ */
 public abstract class Node
 {
     private final Optional<NodeLocation> location;

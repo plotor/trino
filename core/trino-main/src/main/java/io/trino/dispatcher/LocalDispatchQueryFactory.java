@@ -115,6 +115,7 @@ public class LocalDispatchQueryFactory
     {
         WarningCollector warningCollector = warningCollectorFactory.create();
         PlanOptimizersStatsCollector planOptimizersStatsCollector = new PlanOptimizersStatsCollector(queryReportedRuleStatsLimit);
+        // 为本次 Query 创建状态机对象
         QueryStateMachine stateMachine = QueryStateMachine.begin(
                 existingTransactionId,
                 query,
@@ -150,6 +151,7 @@ public class LocalDispatchQueryFactory
             }
 
             try {
+                // 依据 Query 类型创建对应的 QueryExecution 对象
                 return queryExecutionFactory.createQueryExecution(preparedQuery, stateMachine, slug, warningCollector, planOptimizersStatsCollector);
             }
             catch (Throwable e) {

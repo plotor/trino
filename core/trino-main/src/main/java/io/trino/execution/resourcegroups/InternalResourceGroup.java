@@ -603,9 +603,11 @@ public class InternalResourceGroup
                 query.fail(new QueryQueueFullException(id));
                 return;
             }
+            // canRun 的话直接提交异步执行
             if (canRun) {
                 startInBackground(query);
             }
+            // 否则先入队列
             else {
                 enqueueQuery(query);
             }
@@ -665,6 +667,7 @@ public class InternalResourceGroup
                 group = group.parent.get();
             }
             updateEligibility();
+            // 异步提交执行
             executor.execute(query::startWaitingForResources);
         }
     }

@@ -229,6 +229,7 @@ public class PipelinedQueryScheduler
                 .setAttribute(TrinoAttributes.QUERY_ID, queryStateMachine.getQueryId().toString())
                 .startSpan();
 
+        // 对 Fragment 树执行广度优先遍历（层序遍历），并为每个 Fragment 创建一个 Stage 实例，封装到 StageManager 中
         stageManager = StageManager.create(
                 queryStateMachine,
                 metadata,
@@ -240,6 +241,7 @@ public class PipelinedQueryScheduler
                 plan,
                 summarizeTaskInfo);
 
+        // 为需要在 CN 节点上运行的 Stage 构造 StageExecution 对象，并创建 CoordinatorStagesScheduler
         coordinatorStagesScheduler = CoordinatorStagesScheduler.create(
                 queryStateMachine,
                 nodeScheduler,
@@ -300,6 +302,7 @@ public class PipelinedQueryScheduler
             queryStateMachine.updateQueryInfo(Optional.ofNullable(getStageInfo()));
         });
 
+        // 创建 DistributedStagesScheduler，期间会为每个 Stage 创建对应的 StageExecution 和 StageScheduler
         Optional<DistributedStagesScheduler> distributedStagesScheduler = createDistributedStagesScheduler(currentAttempt.get());
 
         coordinatorStagesScheduler.schedule();
@@ -312,11 +315,13 @@ public class PipelinedQueryScheduler
         if (queryStateMachine.isDone()) {
             return Optional.empty();
         }
+
         DistributedStagesScheduler distributedStagesScheduler = switch (retryPolicy) {
             case QUERY, NONE -> {
                 if (attempt > 0) {
                     dynamicFilterService.registerQueryRetry(queryStateMachine.getQueryId(), attempt);
                 }
+
                 yield DistributedStagesScheduler.create(
                         queryStateMachine,
                         schedulerStats,
@@ -543,11 +548,13 @@ public class PipelinedQueryScheduler
                 AtomicReference<DistributedStagesScheduler> distributedStagesScheduler,
                 SqlTaskManager coordinatorTaskManager)
         {
+            // 为 OutputStage 和需要在 CN 上执行的 Stage 创建 OutputBuffer
             Map<PlanFragmentId, PipelinedOutputBufferManager> outputBuffersForStagesConsumedByCoordinator = createOutputBuffersForStagesConsumedByCoordinator(stageManager);
+            // 为 OutputStage 和需要在 CN 上执行的 Stage 创建单分区映射
             Map<PlanFragmentId, Optional<int[]>> bucketToPartitionForStagesConsumedByCoordinator = createBucketToPartitionForStagesConsumedByCoordinator(stageManager);
 
             TaskLifecycleListener taskLifecycleListener = new QueryOutputTaskLifecycleListener(queryStateMachine);
-            // create executions
+            // create executions，遍历所有需要在 CN 上执行的 Stage，为其创建 StageExecution 对象
             ImmutableList.Builder<StageExecution> stageExecutions = ImmutableList.builder();
             for (SqlStage stage : stageManager.getCoordinatorStagesInTopologicalOrder()) {
                 StageExecution stageExecution = createPipelinedStageExecution(
@@ -562,6 +569,7 @@ public class PipelinedQueryScheduler
                 taskLifecycleListener = stageExecution.getTaskLifecycleListener();
             }
 
+            // 为需要在 CN 上执行的 Stage 创建调度器
             CoordinatorStagesScheduler coordinatorStagesScheduler = new CoordinatorStagesScheduler(
                     queryStateMachine,
                     nodeScheduler,
@@ -581,11 +589,11 @@ public class PipelinedQueryScheduler
         {
             ImmutableMap.Builder<PlanFragmentId, PipelinedOutputBufferManager> result = ImmutableMap.builder();
 
-            // create output buffer for output stage
+            // create output buffer for output stage，获取 OutputStage，即 Fragment 树根节点对应的 Stage
             SqlStage outputStage = stageManager.getOutputStage();
             result.put(outputStage.getFragment().getId(), createSingleStreamOutputBuffer(outputStage));
 
-            // create output buffers for stages consumed by coordinator
+            // create output buffers for stages consumed by coordinator，处理需要 CN 处理的 Stage
             for (SqlStage coordinatorStage : stageManager.getCoordinatorStagesInTopologicalOrder()) {
                 for (SqlStage childStage : stageManager.getChildren(coordinatorStage.getStageId())) {
                     result.put(childStage.getFragment().getId(), createSingleStreamOutputBuffer(childStage));
@@ -734,11 +742,32 @@ public class PipelinedQueryScheduler
              * Note: For queries that don't have any coordinator stages the situation is still similar. The exchange client that
              * pulls the final query results has to propagate the same notification if the communication link between the exchange client
              * and one of the output tasks is broken.
+             *
+             * Task有两条通信链路：
+             * Task <-> Coordinator 协调器（用于状态更新）
+             * Task <-> 下游 Task（用于交换 Task 结果）
+             *
+             * 在一种场景中，当一个 Task 与其下游 Task 之间的链路中断（而该 Task 与 Coordinator 之间的链路未中断）且未启用故障恢复功能时，
+             * 下游 Task 会发现通信链路已中断，并使查询失败。
+             *
+             * 然而，当启用了故障恢复功能时，下游 Task 会被配置为忽略故障，以便在上游 Task 出现故障时仍能继续运行。这可能会导致一种“死锁”情况，
+             * 即 Coordinator 认为某个 Task 处于活动状态，但由于该 Task 与其下游 Task 之间的通信链路已中断，没有人去获取结果，从而使 Task
+             * 处于阻塞状态。因此，将此类通信故障通知调度器非常重要，这样调度器就能做出反应并重新调度 Task。
+             *
+             * 目前，只有 “Coordinator” Task 需要在上游 Task 出现故障时仍能继续运行（例如执行表提交的 Task）。重新启动表提交 Task 会带来
+             * 另一组挑战（比如确保提交操作始终具有幂等性）。鉴于只有 Coordinator Task 需要在出现故障时仍能继续运行，在错误报告的实现方面存在
+             * 一个捷径。假定调度操作也在 Coordinator 上进行，因此在通知 Coordinator 时不涉及远程过程调用（RPC）。每当需要在不同节点上分别
+             * 处理调度 Task 和 Coordinator Task 时，就必须实现用于这种通知的远程过程调用机制。
+             *
+             * 注意：对于没有任何 Coordinator 阶段的查询，情况仍然类似。如果交换客户端与某个输出 Task 之间的通信链路中断，拉取最终查询结果的
+             * 交换客户端必须传播相同的通知。
              */
             TaskFailureReporter failureReporter = new TaskFailureReporter(distributedStagesScheduler);
             queryStateMachine.addOutputTaskFailureListener(failureReporter);
 
+            // 获取 Coordinator 所在节点
             InternalNode coordinator = nodeScheduler.createNodeSelector(queryStateMachine.getSession(), Optional.empty()).selectCurrentNode();
+            // 遍历 Stage 并调度执行 Task
             for (StageExecution stageExecution : stageExecutions) {
                 Optional<RemoteTask> remoteTask = stageExecution.scheduleTask(
                         coordinator,
@@ -862,16 +891,28 @@ public class PipelinedQueryScheduler
 
             Map<PartitioningKey, NodePartitionMap> partitioningCacheMap = new HashMap<>();
             Function<PartitioningKey, NodePartitionMap> partitioningCache = partitioningKey ->
-                    partitioningCacheMap.computeIfAbsent(partitioningKey, partitioning -> nodePartitioningManager.getNodePartitioningMap(
-                            queryStateMachine.getSession(),
-                            // TODO: support hash distributed writer scaling (https://github.com/trinodb/trino/issues/10791)
-                            partitioning.handle.equals(SCALED_WRITER_HASH_DISTRIBUTION) ? FIXED_HASH_DISTRIBUTION : partitioning.handle,
-                            partitioning.partitionCount));
+                    partitioningCacheMap.computeIfAbsent(
+                            partitioningKey,
+                            partitioning -> nodePartitioningManager.getNodePartitioningMap(
+                                    queryStateMachine.getSession(),
+                                    // TODO: support hash distributed writer scaling (https://github.com/trinodb/trino/issues/10791)
+                                    partitioning.handle.equals(SCALED_WRITER_HASH_DISTRIBUTION) ? FIXED_HASH_DISTRIBUTION : partitioning.handle,
+                                    partitioning.partitionCount));
 
+            /*
+             * 0 - [ 0 ] - PartitionedPipelinedOutputBufferManager - FixedCountScheduler
+             * 1 - [ 0 ] - PartitionedPipelinedOutputBufferManager - FixedCountScheduler
+             * 2 - [ 0 ] - PartitionedPipelinedOutputBufferManager - SourcePartitionedScheduler
+             * 3 - [ 0 ] - BroadcastPipelinedOutputBufferManager   - SourcePartitionedScheduler
+             * 4 - [ 0 ] - BroadcastPipelinedOutputBufferManager   - SourcePartitionedScheduler
+             */
+
+            // 针对每个 Fragment，创建 bucket 到 partition 的映射关系
             Map<PlanFragmentId, Optional<int[]>> bucketToPartitionMap = createBucketToPartitionMap(
                     coordinatorStagesScheduler.getBucketToPartitionForStagesConsumedByCoordinator(),
                     stageManager,
                     partitioningCache);
+            // 针对每个 Fragment，按照分区策略创建 PipelinedOutputBufferManager
             Map<PlanFragmentId, PipelinedOutputBufferManager> outputBufferManagers = createOutputBufferManagers(
                     coordinatorStagesScheduler.getOutputBuffersForStagesConsumedByCoordinator(),
                     stageManager,
@@ -891,8 +932,10 @@ public class PipelinedQueryScheduler
 
             // Preserve topological ordering in stageExecutionsMap
             Map<StageId, StageExecution> stageExecutions = new LinkedHashMap<>();
+            // 遍历处理所有 SqlStage，创建对应的 StageExecution
             for (SqlStage stage : stageManager.getDistributedStagesInTopologicalOrder()) {
                 Optional<SqlStage> parentStage = stageManager.getParent(stage.getStageId());
+                // 对于需要在 CN 节点上执行的 Stage 直接复用 Coordinator 的 TaskLifecycleListener
                 TaskLifecycleListener taskLifecycleListener;
                 if (parentStage.isEmpty() || parentStage.get().getFragment().getPartitioning().isCoordinatorOnly()) {
                     // output will be consumed by coordinator
@@ -901,10 +944,12 @@ public class PipelinedQueryScheduler
                 else {
                     StageId parentStageId = parentStage.get().getStageId();
                     StageExecution parentStageExecution = requireNonNull(stageExecutions.get(parentStageId), () -> "execution is null for stage: " + parentStageId);
+                    // 为需要在 Worker 节点上执行的 Stage 创建 TaskLifecycleListener
                     taskLifecycleListener = parentStageExecution.getTaskLifecycleListener();
                 }
 
                 PlanFragment fragment = stage.getFragment();
+                // 创建 SqlStage 对应的 StageExecution 对象
                 StageExecution stageExecution = createPipelinedStageExecution(
                         stageManager.get(fragment.getId()),
                         outputBufferManagers,
@@ -918,9 +963,11 @@ public class PipelinedQueryScheduler
 
             ImmutableMap.Builder<StageId, StageScheduler> stageSchedulers = ImmutableMap.builder();
             for (StageExecution stageExecution : stageExecutions.values()) {
+                // 获取当前 Stage 的所有子 Stage 的 StageExecution
                 List<StageExecution> children = stageManager.getChildren(stageExecution.getStageId()).stream()
                         .map(stage -> requireNonNull(stageExecutions.get(stage.getStageId()), () -> "stage execution not found for stage: " + stage))
                         .collect(toImmutableList());
+                // 为每个 Stage 创建对应的 StageScheduler
                 StageScheduler scheduler = createStageScheduler(
                         queryStateMachine,
                         stageExecution,
@@ -936,11 +983,13 @@ public class PipelinedQueryScheduler
                 stageSchedulers.put(stageExecution.getStageId(), scheduler);
             }
 
+            // 创建并初始化 DistributedStagesScheduler
             DistributedStagesScheduler distributedStagesScheduler = new DistributedStagesScheduler(
                     stateMachine,
                     queryStateMachine,
                     schedulerStats,
                     stageManager,
+                    // 计算 Stage 的调度顺序和调度时机
                     executionPolicy.createExecutionSchedule(stageExecutions.values()),
                     stageSchedulers.buildOrThrow(),
                     ImmutableMap.copyOf(stageExecutions),
@@ -955,7 +1004,9 @@ public class PipelinedQueryScheduler
                 Function<PartitioningKey, NodePartitionMap> partitioningCache)
         {
             ImmutableMap.Builder<PlanFragmentId, Optional<int[]>> result = ImmutableMap.builder();
+            // 添加需要在 CN 上执行的 Stage 的 bucket 到 partition 映射关系
             result.putAll(bucketToPartitionForStagesConsumedByCoordinator);
+            // 遍历所有 SqlStage 对象
             for (SqlStage stage : stageManager.getDistributedStagesInTopologicalOrder()) {
                 PlanFragment fragment = stage.getFragment();
                 Optional<int[]> bucketToPartition = getBucketToPartition(
@@ -981,6 +1032,8 @@ public class PipelinedQueryScheduler
             if (partitioningHandle.equals(SOURCE_DISTRIBUTION) || partitioningHandle.equals(SCALED_WRITER_ROUND_ROBIN_DISTRIBUTION)) {
                 return Optional.of(new int[1]);
             }
+
+            // 检索是否存在 TableScan 节点
             if (searchFrom(fragmentRoot).where(node -> node instanceof TableScanNode).findFirst().isPresent()) {
                 if (remoteSourceNodes.stream().allMatch(node -> node.getExchangeType() == REPLICATE)) {
                     return Optional.empty();
@@ -1002,20 +1055,24 @@ public class PipelinedQueryScheduler
                 Map<PlanFragmentId, Optional<int[]>> bucketToPartitionMap)
         {
             ImmutableMap.Builder<PlanFragmentId, PipelinedOutputBufferManager> result = ImmutableMap.builder();
+            // 添加需要在 CN 上执行的 Stage 的 Fragment 到 PipelinedOutputBufferManager 映射关系
             result.putAll(outputBuffersForStagesConsumedByCoordinator);
+            // 遍历所有 SqlStage 对象
             for (SqlStage parentStage : stageManager.getDistributedStagesInTopologicalOrder()) {
+                // 为 SqlStage 的子节点创建 PipelinedOutputBufferManager 对象
                 for (SqlStage childStage : stageManager.getChildren(parentStage.getStageId())) {
                     PlanFragmentId fragmentId = childStage.getFragment().getId();
                     PartitioningHandle partitioningHandle = childStage.getFragment().getOutputPartitioningScheme().getPartitioning().getHandle();
 
+                    // 依据分区策略创建 PipelinedOutputBufferManager
                     PipelinedOutputBufferManager outputBufferManager;
-                    if (partitioningHandle.equals(FIXED_BROADCAST_DISTRIBUTION)) {
+                    if (partitioningHandle.equals(FIXED_BROADCAST_DISTRIBUTION)) { // 广播分区
                         outputBufferManager = new BroadcastPipelinedOutputBufferManager();
                     }
-                    else if (partitioningHandle.equals(SCALED_WRITER_ROUND_ROBIN_DISTRIBUTION)) {
+                    else if (partitioningHandle.equals(SCALED_WRITER_ROUND_ROBIN_DISTRIBUTION)) { // 弹性写入
                         outputBufferManager = new ScaledPipelinedOutputBufferManager();
                     }
-                    else {
+                    else { // 哈希、范围分区
                         Optional<int[]> bucketToPartition = bucketToPartitionMap.get(fragmentId);
                         checkArgument(bucketToPartition.isPresent(), "bucketToPartition is expected to be present for fragment: %s", fragmentId);
                         int partitionCount = Ints.max(bucketToPartition.get()) + 1;

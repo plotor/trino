@@ -18,6 +18,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.Inject;
 import io.airlift.concurrent.BoundedExecutor;
+import io.airlift.log.Logger;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
@@ -43,6 +44,7 @@ import io.trino.spi.QueryId;
 import io.trino.spi.TrinoException;
 import io.trino.spi.resourcegroups.SelectionContext;
 import io.trino.spi.resourcegroups.SelectionCriteria;
+import io.trino.sql.util.AstUtils;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.weakref.jmx.Flatten;
@@ -66,6 +68,7 @@ import static java.util.Objects.requireNonNull;
 
 public class DispatchManager
 {
+    private static final Logger log = Logger.get(DispatchManager.class);
     private final QueryIdGenerator queryIdGenerator;
     private final QueryPreparer queryPreparer;
     private final ResourceGroupManager<?> resourceGroupManager;
@@ -189,22 +192,24 @@ public class DispatchManager
         Session session = null;
         PreparedQuery preparedQuery = null;
         try {
+            // 校验 SQL 长度
             if (query.length() > maxQueryLength) {
                 int queryLength = query.length();
                 query = query.substring(0, maxQueryLength);
                 throw new TrinoException(QUERY_TEXT_TOO_LARGE, format("Query text length (%s) exceeds the maximum length (%s)", queryLength, maxQueryLength));
             }
 
-            // decode session
+            // decode session，创建查询对应的会话，期间会执行一些基础权限校验，并封装环境信息
             session = sessionSupplier.createSession(queryId, querySpan, sessionContext);
 
-            // check query execute permissions
+            // check query execute permissions，权限校验
             accessControl.checkCanExecuteQuery(sessionContext.getIdentity(), queryId);
 
-            // prepare query
+            // prepare query，解析 SQL 生成 AST
             preparedQuery = queryPreparer.prepareQuery(session, query);
+            log.info("Query: %s\nAST: %s", query, AstUtils.printTree(preparedQuery.getStatement()));
 
-            // select resource group
+            // select resource group，解析 Query 类型，选择运行 Query 的资源组，默认使用 global 资源组
             Optional<String> queryType = getQueryType(preparedQuery.getStatement()).map(Enum::name);
             SelectionContext<C> selectionContext = resourceGroupManager.selectGroup(new SelectionCriteria(
                     sessionContext.getIdentity().getPrincipal().isPresent(),
@@ -218,6 +223,7 @@ public class DispatchManager
             // apply system default session properties (does not override user set properties)
             session = sessionPropertyDefaults.newSessionWithDefaultProperties(session, queryType, selectionContext.getResourceGroupId());
 
+            // 创建 DispatchQuery，主要封装了 Query 对应的状态机和 QueryExecution 对象
             DispatchQuery dispatchQuery = dispatchQueryFactory.createDispatchQuery(
                     session,
                     sessionContext.getTransactionId(),
@@ -226,9 +232,11 @@ public class DispatchManager
                     slug,
                     selectionContext.getResourceGroupId());
 
+            // 将 DispatchQuery 注册到 QueryTracker 中
             boolean queryAdded = queryCreated(dispatchQuery);
             if (queryAdded && !dispatchQuery.isDone()) {
                 try {
+                    // 向对应的资源组提交执行 Query
                     resourceGroupManager.submit(dispatchQuery, selectionContext, dispatchExecutor);
                 }
                 catch (Throwable e) {
